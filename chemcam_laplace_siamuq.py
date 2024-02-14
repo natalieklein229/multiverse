@@ -1,17 +1,33 @@
 """
-Fit CNN model to ChemCam and compare to PLS. Prepare model for fitting BNNs. 
+Fit Laplace after NN fit. 
 
 """
 # %%
+import functools
 import numpy as np
+import pandas as pd
+import copy
 import matplotlib.pyplot as plt
+from sklearn.cross_decomposition import PLSRegression
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import Dataset, DataLoader, TensorDataset
+import os
 import lightning as L
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
+from functools import partial
+import pyro.distributions as dist
+import pyro
+pyro.enable_validation(True)
 
+import tyxe
+
+from inference.bnn import *
+import inference.guides as guides
+import inference.likelihoods as likelihoods
+import inference.priors as priors
+from inference.util import *
 from neural_nets.CNN import CNN
 
 torch.set_float32_matmul_precision('medium')
@@ -23,11 +39,14 @@ vio_range = [382.13, 473.184]
 uv_range = [246.635, 338.457]
 keep_shots = ['shot%d' % i for i in range(5, 50)]
 oxides = ['SiO2', 'TiO2', 'Al2O3', 'FeOT', 'MnO', 'MgO', 'CaO', 'Na2O', 'K2O']
+#device='cuda:0'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # %% Params
-n_epo_init = 200 # initial training
-
+n_epo = 100
+# priors
+wp = 1.0
+nprec = .1**-2
 
 # %% functions
 class CCamCNN(L.LightningModule):
@@ -67,12 +86,6 @@ train_oxides = np.load('data/train_oxides.npy')
 val_oxides = np.load('data/val_oxides.npy')
 test_oxides = np.load('data/test_oxides.npy')
 
-# %% PLS results
-try:
-    pls_y_hat = np.load('results/PLS_predictions.npy')
-except:
-    pls_y_hat = np.zeros_like(test_oxides)
-
 # %% CNN
 train_loader = DataLoader(TensorDataset(torch.from_numpy(train_spec).float(), torch.from_numpy(train_oxides).float()), 
                           batch_size=64, shuffle=True)
@@ -85,23 +98,41 @@ cnn = CNN(in_dim=train_spec.shape[1], out_dim=len(oxides), ch_sizes=[32,128,1],
           krnl_sizes=[11,5,1], stride=[3,3,3], lin_l_sizes = [20, 20],
           activation='relu', device=device)
 
-model = CCamCNN(cnn)
-trainer = L.Trainer(max_epochs=n_epo_init, callbacks=[EarlyStopping(monitor="val_loss", mode="min", patience=20)])
-trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+model = CCamCNN.load_from_checkpoint('lightning_logs/version_0/checkpoints/epoch=114-step=125235.ckpt', cnn=cnn)
+
+# %% Linearized Laplace
+cnn_laplace_copy = copy.deepcopy(model.cnn)
+prior = priors.IIDPrior((dist.Normal(torch.tensor(0., device=device), torch.tensor(wp ** -0.5, device=device))))
+likelihood = likelihoods.HomoskedasticGaussian(len(train_spec), precision=nprec)
+laplace_bnn = LaplaceBNN(cnn_laplace_copy.to(device), prior, likelihood, approximation='subnet', S_perc=0.5).to(device)
+opt = pyro.optim.ClippedAdam({"lr": 3e-4, "clip_norm": 100.0, "lrd": 0.999})
+laplace_hist = laplace_bnn.fit(train_loader, opt, n_epo, num_particles=1, closed_form_kl=True, hist=True)
+
+plt.figure()
+plt.plot(laplace_hist)
+plt.show()
 
 # %%
-cnn_y_hat = trainer.predict(dataloaders=test_loader)
-cnn_y_hat = torch.cat(cnn_y_hat, 0)
+cnn_pred = []
+laplace_pred = []
+for x, y in test_loader:
+# TODO use data loader later
+    cnn_pred.append(model.cnn(x.to(device)).detach().cpu().numpy())
+    laplace_pred_ = laplace_bnn.predict(x.to(device), num_predictions=100, aggregate=False)
+    laplace_pred.append(laplace_bnn.likelihood.sample(laplace_pred_).detach().cpu().numpy())
+cnn_pred = np.concatenate(cnn_pred, 0)
+laplace_pred = np.concatenate(laplace_pred, 0)
+laplace_mean = np.mean(laplace_pred, 0)
+laplace_sd = np.std(laplace_pred, 0)
 
 for i in range(len(oxides)):
     plt.figure()
-    plt.plot(test_oxides[:, i], cnn_y_hat[:, i], 'ko')
-    plt.plot(test_oxides[:, i], pls_y_hat[:, i], 'r.', alpha=0.7)
+    plt.plot(test_oxides[:, i], laplace_mean[:, i], 'ko')
+    plt.errorbar(test_oxides[:, i], laplace_mean[:, i], yerr=laplace_sd[:, i], fmt='k.', zorder=-1)
+    plt.plot(test_oxides[:, i], cnn_pred[:, i], 'r.')
     plt.axline([0,0], slope=1)
     plt.title(oxides[i])
     plt.show()
-    pls_test_mse = np.mean(np.square(pls_y_hat[:, i]-test_oxides[:, i]))
-    cnn_test_mse = np.mean(np.square(cnn_y_hat[:, i].detach().numpy()-test_oxides[:, i]))
-    print('PLS test mse: %0.3g, CNN test mse: %0.3g' % (pls_test_mse, cnn_test_mse))
 
-# %%
+# %% save -- maybe some issues saving pyro models... 
+np.save('results/laplace_predictions.npy', laplace_pred)
