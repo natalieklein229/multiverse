@@ -24,7 +24,7 @@ class BaseScoreEstimator:
         x2 = x2.unsqueeze(-3) # Make it into a row tensor
         return self.rbf_kernel(x1,x2,sigma)
     #
-    # ~~~ Method that gram matrix, as well as, the Jacobian matrices which get averaged when computing \beta
+    # ~~~ Method that computes both the gram matrix, as well as the Jacobian matrices which get averaged when computing \beta
     def grad_gram( self, x1, x2, sigma ):
         """
         Computes the gradients of the RBF gram matrix with respect
@@ -46,7 +46,7 @@ class BaseScoreEstimator:
             Kxx = self.gram_matrix(x1,x2,sigma)
             x1 = x1.unsqueeze(-2)  # Make it into a column tensor
             x2 = x2.unsqueeze(-3)  # Make it into a row tensor
-            diff = (x1 - x2) / (sigma ** 2) # INEFFICIENT those computations were already done in gram_matrix(...)
+            diff = (x1 - x2) / (sigma ** 2) # Tom's note: INEFFICIENT those computations were already done in gram_matrix(...)
             dKxx_dx1 = Kxx.unsqueeze(-1) * (-diff)
             dKxx_dx2 = Kxx.unsqueeze(-1) * diff
             return Kxx, dKxx_dx1, dKxx_dx2
@@ -87,7 +87,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         self.eta = eta
         self.num_eigs = J
     #
-    # ~~~ Given the already completed eigen-decomposition, as well as the sampled points `eval_points` offof which the eigen-decomposition is based, return \widehat{Phi}(x)
+    # ~~~ Given the already completed eigen-decomposition, as well as the sampled points `eval_points` off of which the eigen-decomposition is based, return \widehat{Phi}(x)
     def nystrom_method( # ~~~ returns \widehat{Phi}(x)
             self,
             x,
