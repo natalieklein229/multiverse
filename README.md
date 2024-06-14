@@ -67,7 +67,12 @@ y_samples = bayesian_mlp.likelihood.sample(f_predictions)
 
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Ski_trail_rating_symbol-blue_square.svg/768px-Ski_trail_rating_symbol-blue_square.svg.png" width="16" height="16"> _Michael_ should review the main class that I'm using for BNN's (`SequentialGaussianBNN.py`) and offer feedback which we incorporate.
 
+
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Migrate the SSGE stuff for the functional loss (currently in `univar_bnn_demo.py`) to a method in the main class (`SequentialGaussianBNN.py`).
+
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Ski_trail_rating_symbol-blue_square.svg/768px-Ski_trail_rating_symbol-blue_square.svg.png" width="16" height="16"> Refine the implementation of SSGE by isolating the fixed cost of doing the eigen-decomposition (the current version includes this fixed cost within the call method) as well as consolidate computations so that they are shared between the different methods that require the same computations.
+
 
 
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Try out different `x_train` and `y_train` in `univar_bnn_demo.py`.
