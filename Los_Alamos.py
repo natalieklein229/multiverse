@@ -11,7 +11,7 @@ from torch.nn.init import _calculate_fan_in_and_fan_out, calculate_gain # ~~~ us
 ### ~~~
 
 #
-# ~~~ Helper function which creates a new instance of the supplied sequential architeture
+# ~~~ Helper function which creates a new instance of the supplied sequential architeture (ChatGPT wrote this one)
 def nonredundant_copy_of_module_list(module_list):
     architecture = [ (type(layer),layer) for layer in module_list ]
     layers = []
