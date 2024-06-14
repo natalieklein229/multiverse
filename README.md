@@ -61,7 +61,7 @@ The code for SSGE was taken from the repo
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Improve the setup guidlines for this repo (venv?) and overall bring this repo into alignment with industry best practices.
 
 
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Ski_trail_rating_symbol-blue_square.svg/768px-Ski_trail_rating_symbol-blue_square.svg.png" width="16" height="16"> _Michael_ should the main class that I'm using for BNN's (`SequentialGaussianBNN.py`) and offer feedback which we incorporate.
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Ski_trail_rating_symbol-blue_square.svg/768px-Ski_trail_rating_symbol-blue_square.svg.png" width="16" height="16"> _Michael_ should review the main class that I'm using for BNN's (`SequentialGaussianBNN.py`) and offer feedback which we incorporate.
 
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Migrate the SSGE stuff for the functional loss (currently in `univar_bnn_demo.py`) to a method in the main class (`SequentialGaussianBNN.py`).
 
