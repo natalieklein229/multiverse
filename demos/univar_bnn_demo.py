@@ -9,7 +9,6 @@ import torch
 from torch import nn
 from tqdm import tqdm
 from matplotlib import pyplot as plt
-import os
 
 #
 # ~~~ The guts of the model
