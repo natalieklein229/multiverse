@@ -16,6 +16,15 @@ net = multiverse.neural_nets.MLP(in_dim=1, out_dim=1, width=10, depth=2, activat
 
 wp = .1 # prior precision for the parameters of the BNN
 prior = multiverse.priors.IIDPrior((dist.Normal(0., wp**-2)))
+I believe, the complete list of required dependencies, excluding the standard library (e.g., `os`) is:
+- [ ] pytorch
+- [ ] matplotlib
+- [ ] tqdm
+- [ ] numpy
+- [ ] https://github.com/ThomasLastName/quality_of_life
+
+
+## Running the code
 
 nprec = .1**-2 # noise precision for the likelihood function
 likelihood = multiverse.likelihoods.HomoskedasticGaussian(n, precision=nprec)
