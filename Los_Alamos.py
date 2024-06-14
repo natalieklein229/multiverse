@@ -34,7 +34,7 @@ def log_gaussian_pdf( where, mu, sigma ):
     return marginal_log_probs.sum()
 
 #
-# ~~~ 
+# ~~~ Main class
 class SequentialGaussianBNN(nn.Module):
     def __init__(self,*args):
         #
