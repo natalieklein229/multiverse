@@ -62,7 +62,7 @@ y_samples = bayesian_mlp.likelihood.sample(f_predictions)
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Improve the setup guidlines for this repo (venv?) and overall bring this repo into alignment with industry best practices.
 
 
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Look into the license of the repo https://github.com/AntixK/Spectral-Stein-Gradient and the corresponding legality of employing code therefrom.
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Look into the license of the repo https://github.com/AntixK/Spectral-Stein-Gradient and the corresponding legality of employing code therefrom. (It's the MIT license; so we're good, right?)
 
 
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Ski_trail_rating_symbol-blue_square.svg/768px-Ski_trail_rating_symbol-blue_square.svg.png" width="16" height="16"> _Michael_ should review the main class that I'm using for BNN's (`SequentialGaussianBNN.py`) and offer feedback which we incorporate.
