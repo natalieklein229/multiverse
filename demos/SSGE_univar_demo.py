@@ -1,7 +1,7 @@
 
 
 import torch
-from microsoft_365.SSGE import SpectralSteinEstimator
+from ..SSGE import SpectralSteinEstimator
 from matplotlib import pyplot as plt
 
 

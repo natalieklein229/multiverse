@@ -13,8 +13,8 @@ import os
 
 #
 # ~~~ The guts of the model
-from microsoft_365.Los_Alamos import SequentialGaussianBNN, log_gaussian_pdf
-from microsoft_365.SSGE import SpectralSteinEstimator as SSGE
+from ..SequentialGaussianBNN import SequentialGaussianBNN, log_gaussian_pdf
+from ..SSGE import SpectralSteinEstimator as SSGE
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)

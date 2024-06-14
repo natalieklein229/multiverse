@@ -10,7 +10,7 @@ from torch import nn
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
-from quality_of_life.my_torch_utils         import convert_Tensors_to_Dataset
+from quality_of_life.my_torch_utils import convert_Tensors_to_Dataset
 
 
 
