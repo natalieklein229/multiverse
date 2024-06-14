@@ -52,3 +52,29 @@ y_samples = bayesian_mlp.likelihood.sample(f_predictions)
 ```
 
 
+The code for SSGE was taken from the repo 
+
+
+
+# TODO
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Improve the setup guidlines for this repo (venv?), and overall bring this repo into alignment with industry best practices.
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Try out different `x_train` and `y_train` in `univar_bnn_demo.py`
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Ski_trail_rating_symbol-blue_square.svg/768px-Ski_trail_rating_symbol-blue_square.svg.png" width="16" height="16"> Do some multivariable toy problems _and_ visualize them using Michal's projection trick
+
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Experiment more with the effect that the SSGE hyperparameters J and M have on the fBNN.
+
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Better **measurement sets** in fBNN.
+
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Ski_trail_rating_symbol-blue_square.svg/768px-Ski_trail_rating_symbol-blue_square.svg.png" width="16" height="16"> Better functional priors in fBNN (look into https://arxiv.org/abs/2011.12829).
+
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/0/0c/Ski_trail_rating_symbol-black_diamond.svg" width="16" height="16"> Implement _Tractable Function-Space Variational Inference in Bayesian Neural Networks_ by Rudner et al https://arxiv.org/abs/2312.17199
+
+
+
