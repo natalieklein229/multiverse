@@ -24,7 +24,7 @@ class BaseScoreEstimator:
         x2 = x2.unsqueeze(-3) # Make it into a row tensor
         return self.rbf_kernel(x1,x2,sigma)
     #
-    # ~~~ Method that computes both the gram matrix, as well as the Jacobian matrices which get averaged when computing \beta
+    # ~~~ Method that gram matrix, as well as, the Jacobian matrices which get averaged when computing \beta
     def grad_gram( self, x1, x2, sigma ):
         """
         Computes the gradients of the RBF gram matrix with respect
@@ -39,20 +39,19 @@ class BaseScoreEstimator:
         :param sigma: (Float) Width of the RBF kernel
         :return: Gram matrix [N x M],
                  gradients with respect to x1 [N x M x D],
-                 gradients with respect to x2 [N x M x D]
+                 # gradients with respect to x2 [N x M x D]
 
         """
         with torch.no_grad():
             Kxx = self.gram_matrix(x1,x2,sigma)
             x1 = x1.unsqueeze(-2)  # Make it into a column tensor
             x2 = x2.unsqueeze(-3)  # Make it into a row tensor
-            diff = (x1 - x2) / (sigma ** 2) # Tom's note: INEFFICIENT those computations were already done in gram_matrix(...)
+            diff = (x1 - x2) / (sigma ** 2) # [N x M x D]
             dKxx_dx1 = Kxx.unsqueeze(-1) * (-diff)
-            dKxx_dx2 = Kxx.unsqueeze(-1) * diff
-            return Kxx, dKxx_dx1, dKxx_dx2
+            return Kxx, dKxx_dx1
     #
     # ~~~ Method that heuristically chooses the bandwidth sigma for the RBF kernel
-    def heuristic_sigma( self, x, xm ):
+    def heuristic_sigma(self,x1,x2):
         """
         Uses the median-heuristic for selecting the
         appropriate sigma for the RBF kernel based
@@ -64,38 +63,66 @@ class BaseScoreEstimator:
         :return:
         """
         with torch.no_grad():
-            x1 = x.unsqueeze(-2)   # Make it into a column tensor
-            x2 = xm.unsqueeze(-3)  # Make it into a row tensor
-            pdist_mat = torch.sqrt(((x1 - x2) ** 2).sum(dim = -1)) # [N x M]
+            x1 = x1.unsqueeze(-2)   # Make it into a column tensor
+            x2 = x2.unsqueeze(-3)  # Make it into a row tensor
+            pdist_mat = ((x1-x2)**2).sum(dim = -1).sqrt() # [N x M]
             kernel_width = torch.median(torch.flatten(pdist_mat))
             return kernel_width
     #
     # ~~~ Placeholder method for the content of __call__(...)
     @abstractmethod
-    def compute_score_gradients( self, x, xm ):
+    def compute_score_gradients(self,x):
         raise NotImplementedError
     #
     # ~~~ The `__call__` method just calls `compute_score_gradients`
-    def __call__( self, x, xm ):
-        return self.compute_score_gradients(x,xm)
+    def __call__(self,x):
+        return self.compute_score_gradients(x)
 
 
 class SpectralSteinEstimator(BaseScoreEstimator):
     #
     # ~~~ Allow the user to specify eta for numerical stability as well as J for numerical fidelity
-    def __init__( self, eta=None, J=None ):
+    def __init__( self, samples, eta=None, J=None, sigma=None ):
         self.eta = eta
         self.num_eigs = J
+        self.samples = samples
+        self.M = torch.tensor( samples.size(-2), dtype=samples.dtype, device=samples.device )
+        self.sigma = self.heuristic_sigma(self.samples,self.samples) if sigma is None else sigma
+        self.eigen_decomposition()
     #
-    # ~~~ Given the already completed eigen-decomposition, as well as the sampled points `eval_points` off of which the eigen-decomposition is based, return \widehat{Phi}(x)
-    def nystrom_method( # ~~~ returns \widehat{Phi}(x)
-            self,
-            x,
-            eval_points,
-            eigen_vecs,
-            eigen_vals,
-            kernel_sigma
-        ):
+    # ~~~ NEW
+    def eigen_decomposition(self):
+        with torch.no_grad():
+            #
+            # ~~~ Build the kernel matrix, as well as the associated Jacobians
+            xm = self.samples
+            self.K, self.K_Jacobians = self.grad_gram( xm, xm, self.sigma )
+            self.avg_jac = self.K_Jacobians.mean(dim=-3) # [M x D]
+            #
+            # ~~~ Optionally, K += eta*I for numerical stability
+            if self.eta is not None:
+                self.K += self.eta * torch.eye( xm.size(-2), dtype=xm.dtype, device=xm.device )
+            #
+            # ~~~ Do the actual eigen-decomposition
+            if self.num_eigs is None:
+                eigen_vals, eigen_vecs = torch.linalg.eigh(self.K)
+                eigen_vals, eigen_vecs = eigen_vals.flip([0]), eigen_vecs.flip([1])
+            else:
+                U, s, V  = torch.svd_lowrank( self.K, q=min(self.K.shape[0],self.num_eigs) )
+                eigen_vals = s
+                eigen_vecs = (U+V)/2    # ~~~ by my estimation, because Kxx is symmetric, we actually expect U==V; we are only averaging out the arithmetic errors
+            """
+            instead of:
+            eigen_vals, eigen_vecs = torch.linalg.eig(Kxx)
+            eigen_vals, eigen_vecs = eigen_vals.to(torch.get_default_dtype()), eigen_vecs.to(torch.get_default_dtype())
+            if self.num_eigs is not None:
+                eigen_vals = eigen_vals[:self.num_eigs]
+                eigen_vecs = eigen_vecs[:, :self.num_eigs]
+            """
+            self.eigen_vals, self.eigen_vecs = eigen_vals, eigen_vecs
+    #
+    # ~~~ Compute \widehat{Phi}(x)
+    def Phi(self,x):
         """
         Implements the Nystrom method for approximating the
         eigenfunction (generalized eigenvectors) for the kernel
@@ -112,16 +139,13 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         :param kernel_sigma: (Float) Kernel width
         :return: Eigenfunction at x [N x M]
         """
-        M = torch.tensor(eval_points.size(-2), dtype=torch.float)
-        Kxxm = self.gram_matrix( x, eval_points, kernel_sigma )
-        phi_x =  torch.sqrt(M) * Kxxm @ eigen_vecs
-        phi_x *= 1. / eigen_vals # Take only the real part of the eigenvals
-                                      # as the Im is 0 (Symmetric matrix)
-                                      # Tom's note: you wouldn't need to do this if you had just used `eigh` like you should've
+        K_mixed = self.gram_matrix( x, self.samples, self.sigma )
+        phi_x =  torch.sqrt(self.M) * K_mixed @ self.eigen_vecs
+        phi_x *= 1. / self.eigen_vals
         return phi_x
     #
     # ~~~ Actually estimate \grad \ln(q(x))
-    def compute_score_gradients( self, x, xm ):
+    def compute_score_gradients(self,x):
         """
         Computes the Spectral Stein Gradient Estimate (SSGE) for the
         score function. The SSGE is given by
@@ -137,41 +161,9 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         :param xm: (Tensor) Samples for the kernel [M x D]
         :return: gradient estimate [N x D]
         """
-        if xm is None:
-            xm = x
-            sigma = self.heuristic_sigma(xm, xm)
-        else:
-            # Account for the new data points too
-            # _xm = torch.cat((x, xm), dim=-2)
-            sigma = self.heuristic_sigma(xm, xm)
-        M = torch.tensor( xm.size(-2), dtype=torch.float )
-        Kxx, dKxx_dx, _ = self.grad_gram(xm, xm, sigma)
-        # Kxx = Kxx + eta * I
-        if self.eta is not None:
-            Kxx += self.eta * torch.eye( xm.size(-2), device=xm.device )
-        """
-        instead of:
-        eigen_vals, eigen_vecs = torch.linalg.eig(Kxx)
-        eigen_vals, eigen_vecs = eigen_vals.to(torch.get_default_dtype()), eigen_vecs.to(torch.get_default_dtype())
-        if self.num_eigs is not None:
-            eigen_vals = eigen_vals[:self.num_eigs]
-            eigen_vecs = eigen_vecs[:, :self.num_eigs]
-        """
-        if self.num_eigs is None:
-            eigen_vals, eigen_vecs = torch.linalg.eigh(Kxx)
-            eigen_vals, eigen_vecs = eigen_vals.flip([0]), eigen_vecs.flip([1])
-        else:
-            U, s, V  = torch.svd_lowrank( Kxx, q=min(Kxx.shape[0],self.num_eigs) )
-            eigen_vals = s
-            eigen_vecs = (U+V)/2    # ~~~ by my estimation, because Kxx is symmetric, we actually expect U==V; we are only averaging out the arithmetic errors
-        phi_x = self.nystrom_method( x, xm, eigen_vecs, eigen_vals, sigma ) # [N x M]
-        # Compute the Monte Carlo estimate of the gradient of
-        # the eigenfunction at x
-        dKxx_dx_avg = dKxx_dx.mean(dim=-3) #[M x D]
-        beta = - torch.sqrt(M) * eigen_vecs.t() @ dKxx_dx_avg
-        beta *= (1. / eigen_vals.unsqueeze(-1))
-        # assert beta.allclose(beta1), f"incorrect computation {beta - beta1}"
-        g = phi_x @ beta # [N x D]
-        return g
-        # Tom's note: BAD this is re-doing the entire fixed cost, as well as the variable cost, each time the estimator needs to be evaluated!
+        with torch.no_grad():
+            Phi_x = self.Phi(x) # [N x M]
+            beta = - torch.sqrt(self.M) * self.eigen_vecs.T @ self.avg_jac
+            beta *= (1. / self.eigen_vals.unsqueeze(-1))
+            return Phi_x @ beta # [N x D]
 

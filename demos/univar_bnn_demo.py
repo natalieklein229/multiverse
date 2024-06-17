@@ -14,6 +14,7 @@ from matplotlib import pyplot as plt
 # ~~~ The guts of the model
 from ..SequentialGaussianBNN import SequentialGaussianBNN, log_gaussian_pdf
 from ..SSGE import SpectralSteinEstimator as SSGE
+from ..SSGE import BaseScoreEstimator as SSGE_backend
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
@@ -184,9 +185,10 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
 ### ~~~
 
 #
-# ~~~ Borrow from SSGE, the implementation of the sub-routines responsible for building the kernel matrix and estimating a good kernel bandwidth
-kernel_matrix = SSGE().gram_matrix
-bandwidth_estimator = SSGE().heuristic_sigma
+# ~~~ Borrow from SSGE the implementation of the sub-routines responsible for building the kernel matrix and estimating a good kernel bandwidth
+kernel_matrix = SSGE_backend().gram_matrix
+bandwidth_estimator = SSGE_backend().heuristic_sigma
+
 
 #
 # ~~~ Do GPR
@@ -233,7 +235,6 @@ if make_gif:
     for j in range(initial_frame_repetitions):
         gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
-
 #
 # ~~~ Do Bayesian training
 metrics = ( "ELBO", "post", "prior", "like" )
@@ -241,6 +242,8 @@ history = {}
 for metric in metrics:
     history[metric] = []
 
+#
+# ~~~ Define how to project onto the constraint set
 if project:
     BNN.rho = lambda x:x
     def projection_step(BNN):
@@ -248,6 +251,10 @@ if project:
             for p in BNN.model_std.parameters():
                 p.data = torch.clamp( p.data, min=projection_tol )
     projection_step(BNN)
+
+#
+# ~~~ Define the measurement set for functional training
+BNN.measurement_set = x_train
 
 # torch.autograd.set_detect_anomaly(True)
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
@@ -272,13 +279,13 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
                     #
                     # ~~~ Use SSGE to compute "the intractible parts of the gradient"
                     with torch.no_grad():
-                        posterior_score_at_yhat =   SSGE( eta=eta, J=J )( yhat.reshape(1,-1), posterior_samples )
-                        prior_score_at_yhat     =   SSGE( eta=eta, J=J )( yhat.reshape(1,-1), prior_samples )
+                        posterior_score_at_yhat =   SSGE( posterior_samples, eta=eta, J=J )( yhat.reshape(1,-1) )
+                        prior_score_at_yhat     =   SSGE(   prior_samples,   eta=eta, J=J )( yhat.reshape(1,-1) )
                     #
                     # ~~~ Finally, compute the gradients of each of the three terms
                     log_posterior_density   =   (posterior_score_at_yhat @ yhat).squeeze()  # ~~~ the inner product from the chain rule
                     log_prior_density       =   (prior_score_at_yhat @ yhat).squeeze()      # ~~~ the inner product from the chain rule
-                    log_likelihood_density  =   log_gaussian_pdf( where=y_train, mu=yhat, sigma=BNN.conditional_std )
+                    log_likelihood_density  =   log_gaussian_pdf( where=y_train, mu=BNN(X), sigma=BNN.conditional_std )
                     #
                     # ~~~ Add them up and differentiate
                     negative_ELBO = ( log_posterior_density - log_prior_density - log_likelihood_density )/n_MC_samples
@@ -323,7 +330,6 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
             fig,ax = populate_figure(fig,ax)
             gif.capture()
             # print("captured")
-
 
 
 

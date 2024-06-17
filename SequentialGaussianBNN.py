@@ -3,6 +3,7 @@ import math
 import torch
 from torch import nn
 from torch.nn.init import _calculate_fan_in_and_fan_out, calculate_gain # ~~~ used (optionally) to define the prior distribution on network weights
+from microsoft_365.SSGE import SpectralSteinEstimator as SSGE
 
 
 
@@ -74,6 +75,16 @@ class SequentialGaussianBNN(nn.Module):
         #
         # ~~~ Define the assumed level of noise in the training data: when this is set to smaller values, the model "pays more attention" to the data, and fits it more aggresively (can also be a vector)
         self.conditional_std = torch.tensor(0.001)
+        #
+        # ~~~ NEW attributes for SSGE and functional training
+        self.J_prior   = 10
+        self.J_post    = 10
+        self.eta_prior = 10
+        self.eta_post  = 10
+        self.M_prior   = 50
+        self.M_post    = 50
+        self.measurement_set = None
+        self.prior_SSGE      = None
     #
     # ~~~ Sample according to a "standard normal distribution in the shape of our neural network"
     def sample_from_standard_normal(self):
@@ -171,6 +182,44 @@ class SequentialGaussianBNN(nn.Module):
                 F_theta_of_z    =    mean_layer.bias   +  sigma_bias * z.bias
                 log_posterior  +=    log_gaussian_pdf( where=F_theta_of_z,  mu=mean_layer.bias,   sigma=sigma_bias  )
         return log_posterior
+    #
+    # ~~~ NEW
+    def setup_prior_SSGE(self):
+        with torch.no_grad():
+            prior_samples = torch.column_stack([ self.prior_forward( self.measurement_set ) for _ in range(self.M_prior) ]).T
+            self.prior_SSGE = SSGE( samples=prior_samples, eta=self.eta_prior, J=self.J_prior )
+    #
+    # ~~~ NEW
+    def sample_measurement_set(self):
+        raise NotImplementedError("In order to resample a measurement set, you must assign `self.sample_measurement_set=my_method` where `my_method` accepts the argument `self` and assigns a value to `self.meaurementset=___`.")
+        # self.measurement_set = ???
+    #
+    # ~~~ NEW
+    def functional_kl( self, resample=True ):
+        #
+        # ~~~ if `resample==True` then generate a new meausrement set
+        if resample:
+            self.sample_new_measurement_set()
+        #
+        # ~~~ Prepare for using SSGE to estimate some of the gradient terms
+        with torch.no_grad():
+            posterior_samples = torch.column_stack([ self( self.measurement_set ) for _ in range(self.M_post) ]).T
+            posterior_SSGE = SSGE( samples=posterior_samples, eta=self.eta_prior, J=self.J_prior )
+            if self.prior_SSGE is None:
+                self.setup_prior_SSGE()  
+        #
+        # ~~~ By the chain rule, at these points we must (use SSGE to) compute the scores          
+        yhat = self( self.measurement_set )
+        #
+        # ~~~ Use SSGE to compute "the intractible parts of the chain rule"
+        with torch.no_grad():
+            posterior_score_at_yhat =  posterior_SSGE( yhat.reshape(1,-1) )
+            prior_score_at_yhat     = self.prior_SSGE( yhat.reshape(1,-1) )
+        #
+        # ~~~ Combine all the ingridents as per the chain rule 
+        log_posterior_density  =  ( posterior_score_at_yhat @ yhat).squeeze() # ~~~ the inner product from the chain rule
+        log_prior_density      =  (prior_score_at_yhat @ yhat).squeeze()      # ~~~ the inner product from the chain rule            
+        return log_posterior_density, log_prior_density
     #
     # ~~~ A helper function that samples a bunch from the predicted posterior distribution
     def posterior_predicted_mean_and_std( self, x_test, n_samples ):
