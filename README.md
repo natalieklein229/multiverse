@@ -21,8 +21,10 @@ I believe, the complete list of required dependencies, excluding the standard li
 - [ ] matplotlib
 - [ ] tqdm
 - [ ] numpy
-- [ ] https://github.com/ThomasLastName/quality_of_life (this repo has its own dependencies, but I believe it is sufficient to run this repo with only the above packages installed; I believe "the required parts" of this repo depend only on the same 4 packages as above and the standard python library)
+- [ ] plotly
+- [ ] https://github.com/ThomasLastName/quality_of_life (this repo has its own dependencies, but I believe it is sufficient to run this repo with only the above packages installed; I believe "the required parts" of this repo depend only on the same 4 packages as above and the standard python library).
 
+If desired, the dependencies on `plotly` and `quality_of_life` could be removed.
 
 ## Running the code
 
