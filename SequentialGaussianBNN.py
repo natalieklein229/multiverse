@@ -3,7 +3,7 @@ import math
 import torch
 from torch import nn
 from torch.nn.init import _calculate_fan_in_and_fan_out, calculate_gain # ~~~ used (optionally) to define the prior distribution on network weights
-from microsoft_365.SSGE import SpectralSteinEstimator as SSGE
+from SSGE import SpectralSteinEstimator as SSGE
 
 
 
