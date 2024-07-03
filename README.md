@@ -10,9 +10,14 @@ User-friendly Bayesian Neural Networks (BNNs) using PyTorch and Pyro, built on t
 We begin by specifying an optimizer for the MAP, a neural architecture, a prior for the parameters, and a likelihood function (and, implicitly, a link function) for the response.
 Simple neural architectures are provided in `BNNmultiverse.neural_nets`.
 
+<<<<<<< HEAD
 ```
 optim = pyro.optim.Adam({"lr": 1e-3})
 net = multiverse.neural_nets.MLP(in_dim=1, out_dim=1, width=10, depth=2, activation="tanh")
+=======
+test
+
+>>>>>>> 5403cd7 (test commit adding .gif to gitignore)
 
 wp = .1 # prior precision for the parameters of the BNN
 prior = multiverse.priors.IIDPrior((dist.Normal(0., wp**-2)))
