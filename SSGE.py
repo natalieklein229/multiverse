@@ -76,7 +76,7 @@ class BaseScoreEstimator:
     #
     # ~~~ The `__call__` method just calls `compute_score_gradients`
     def __call__(self,x):
-        return self.compute_score_gradients(self,x)
+        return self.compute_score_gradients(x)
 
 
 class SpectralSteinEstimator(BaseScoreEstimator):
@@ -87,7 +87,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         self.num_eigs = J
         self.samples = samples
         self.M = torch.tensor( samples.size(-2), dtype=samples.dtype, device=samples.device )
-        self.sigma = self.heuristic_sigma( self.samples, self.samples ) if sigma is None else sigma
+        self.sigma = self.heuristic_sigma(self.samples,self.samples) if sigma is None else sigma
         self.eigen_decomposition()
     #
     # ~~~ NEW
@@ -162,7 +162,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         :return: gradient estimate [N x D]
         """
         with torch.no_grad():
-            Phi_x = self.Phi(self,x) # [N x M]
+            Phi_x = self.Phi(x) # [N x M]
             beta = - torch.sqrt(self.M) * self.eigen_vecs.T @ self.avg_jac
             beta *= (1. / self.eigen_vals.unsqueeze(-1))
             return Phi_x @ beta # [N x D]
