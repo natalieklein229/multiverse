@@ -96,7 +96,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
             #
             # ~~~ Build the kernel matrix, as well as the associated Jacobians
             xm = self.samples
-            self.K, self.K_Jacobians = self.grad_gram( self, xm, xm, self.sigma )
+            self.K, self.K_Jacobians = self.grad_gram( xm, xm, self.sigma )
             self.avg_jac = self.K_Jacobians.mean(dim=-3) # [M x D]
             #
             # ~~~ Optionally, K += eta*I for numerical stability
