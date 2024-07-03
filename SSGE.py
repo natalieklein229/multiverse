@@ -43,7 +43,7 @@ class BaseScoreEstimator:
 
         """
         with torch.no_grad():
-            Kxx = self.gram_matrix(self,x1,x2,sigma)
+            Kxx = self.gram_matrix(x1,x2,sigma)
             x1 = x1.unsqueeze(-2)  # Make it into a column tensor
             x2 = x2.unsqueeze(-3)  # Make it into a row tensor
             diff = (x1 - x2) / (sigma ** 2) # [N x M x D]
@@ -139,7 +139,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         :param kernel_sigma: (Float) Kernel width
         :return: Eigenfunction at x [N x M]
         """
-        K_mixed = self.gram_matrix( self, x, self.samples, self.sigma )
+        K_mixed = self.gram_matrix( x, self.samples, self.sigma )
         phi_x =  torch.sqrt(self.M) * K_mixed @ self.eigen_vecs
         phi_x *= 1. / self.eigen_vals
         return phi_x
