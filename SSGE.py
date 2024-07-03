@@ -43,7 +43,7 @@ class BaseScoreEstimator:
 
         """
         with torch.no_grad():
-            Kxx = self.gram_matrix(x1,x2,sigma)
+            Kxx = self.gram_matrix(self,x1,x2,sigma)
             x1 = x1.unsqueeze(-2)  # Make it into a column tensor
             x2 = x2.unsqueeze(-3)  # Make it into a row tensor
             diff = (x1 - x2) / (sigma ** 2) # [N x M x D]
@@ -76,7 +76,7 @@ class BaseScoreEstimator:
     #
     # ~~~ The `__call__` method just calls `compute_score_gradients`
     def __call__(self,x):
-        return self.compute_score_gradients(x)
+        return self.compute_score_gradients(self,x)
 
 
 class SpectralSteinEstimator(BaseScoreEstimator):
@@ -87,7 +87,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         self.num_eigs = J
         self.samples = samples
         self.M = torch.tensor( samples.size(-2), dtype=samples.dtype, device=samples.device )
-        self.sigma = self.heuristic_sigma(self.samples,self.samples) if sigma is None else sigma
+        self.sigma = self.heuristic_sigma( self, self.samples, self.samples ) if sigma is None else sigma
         self.eigen_decomposition()
     #
     # ~~~ NEW
@@ -96,7 +96,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
             #
             # ~~~ Build the kernel matrix, as well as the associated Jacobians
             xm = self.samples
-            self.K, self.K_Jacobians = self.grad_gram( xm, xm, self.sigma )
+            self.K, self.K_Jacobians = self.grad_gram( self, xm, xm, self.sigma )
             self.avg_jac = self.K_Jacobians.mean(dim=-3) # [M x D]
             #
             # ~~~ Optionally, K += eta*I for numerical stability
@@ -139,7 +139,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         :param kernel_sigma: (Float) Kernel width
         :return: Eigenfunction at x [N x M]
         """
-        K_mixed = self.gram_matrix( x, self.samples, self.sigma )
+        K_mixed = self.gram_matrix( self, x, self.samples, self.sigma )
         phi_x =  torch.sqrt(self.M) * K_mixed @ self.eigen_vecs
         phi_x *= 1. / self.eigen_vals
         return phi_x
@@ -162,7 +162,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         :return: gradient estimate [N x D]
         """
         with torch.no_grad():
-            Phi_x = self.Phi(x) # [N x M]
+            Phi_x = self.Phi(self,x) # [N x M]
             beta = - torch.sqrt(self.M) * self.eigen_vecs.T @ self.avg_jac
             beta *= (1. / self.eigen_vals.unsqueeze(-1))
             return Phi_x @ beta # [N x D]
