@@ -15,13 +15,13 @@ make_gif = False
 D = 10
 n_test = 500
 device = "cuda" if torch.cuda.is_available() else "cpu"
-self = SpectralSteinEstimator(eta=eta)
-
 
 test_points = torch.randn( n_test, D, device=device )
 samples = torch.randn( M, D, device=device )
 xm = samples
 x = test_points
+self = SpectralSteinEstimator( eta=eta, samples=xm )
+
 
 
 _xm = torch.cat((x, xm), dim=-2)
