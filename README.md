@@ -11,6 +11,7 @@ We begin by specifying an optimizer for the MAP, a neural architecture, a prior 
 Simple neural architectures are provided in `BNNmultiverse.neural_nets`.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ```
 optim = pyro.optim.Adam({"lr": 1e-3})
 net = multiverse.neural_nets.MLP(in_dim=1, out_dim=1, width=10, depth=2, activation="tanh")
@@ -22,12 +23,41 @@ test
 wp = .1 # prior precision for the parameters of the BNN
 prior = multiverse.priors.IIDPrior((dist.Normal(0., wp**-2)))
 I believe, the complete list of required dependencies, excluding the standard library (e.g., `os`) is:
+=======
+
+# Setup
+
+## Setup steps using anaconda on MacOS
+
+(on windows, I think the only difference is that you need to use `copy` instead of `cp`?)
+
+0. Open the terminal and say `conda env list` to confirm that the code is not present already.
+
+1. (_create an env_) `conda create --name BNNs python=3.10` (if desired, you can swap `BNNs` for your preferred name).
+
+2. (_activate the env_) `conda activate BNNs`
+
+3. (_install packages to the active env_) `conda install ___` for each of the required packages listed under **Dependencies**, where you replace `___` by the name of the python package.
+
+4. (_install quality_of_life to the active env_) Navigate into your Documents folder, create a folder with `mkdir quality_of_life`, cd into the directory you just created with `cd ./quality_of_life`, from there `git clone https://github.com/ThomasLastName/quality_of_life.git`, then copy the setup.py file to the necessary location with `cp ./quality_of_life/setup.py ./setup.py`, confirm that `ls` returns only `quality_of_life` and  `setup.py` _but no other `.py` files_, and finally cast `pip install -e .`, which adds this directory to the active conda environment.
+
+5. (_install this code_) Navigate to wherever you want (e.g., the Documents folder), and clone this repo there.
+
+
+## Dependencies
+
+Well, you need pytorch and matplotlib and such.
+Perhaps non-trivially you need tqdm.
+**Most notably,** you need my helper utils https://github.com/ThomasLastName/quality_of_life which you just need clone to anywhere on the path for your python environment (I got the impression from Natalie that y'all are allowed clone repos off the internet to your lanl devices? You need this repo)
+
+I believe, the complete list of required dependencies, excluding the standard library (e.g., `typing`) is:
+>>>>>>> 1892f43 (Minute tweaks to README)
 - [ ] pytorch
 - [ ] matplotlib
 - [ ] tqdm
 - [ ] numpy
 - [ ] plotly
-- [ ] https://github.com/ThomasLastName/quality_of_life (this repo has its own dependencies, but I believe it is sufficient to run this repo with only the above packages installed; I believe "the required parts" of this repo depend only on the same 4 packages as above and the standard python library).
+- [ ] https://github.com/ThomasLastName/quality_of_life (this repo has its own dependencies, but I believe it is sufficient to run this repo with only the above packages installed; I believe "the required parts" of this repo depend only on the same 5 packages as above and the standard python library).
 
 If desired, the dependencies on `plotly` and `quality_of_life` could be removed.
 
