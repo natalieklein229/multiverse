@@ -17,7 +17,11 @@ eta = 0.0095
 
 ground_truth = lambda x: -x
 score = ground_truth(x)
-score_estimator = SpectralSteinEstimator(eta=eta)
+try:
+    score_estimator = SpectralSteinEstimator(eta=eta)
+except RuntimeError:
+    score_estimator = SpectralSteinEstimator(eta=eta,h=False)
+    
 samples = torch.randn( M, 1, device=device  )
 est_score = score_estimator(x,samples)
 

@@ -9,6 +9,7 @@ from tqdm import trange
 
 torch.manual_seed(1234)
 M = 1000   # ~~~ will be implicity rounded *down* the the nearest square number: int(sqrt(M))**2
+J = 20
 eta = 0.0095
 make_gif = True
 D = 3       # ~~~ in the final implemtnation of functional BNN's, this is the size of the training dataset
@@ -18,7 +19,10 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 test_points = torch.randn( n_test, D, device=device )
 ground_truth = lambda x: -x
 score = ground_truth(test_points)
-score_estimator = SpectralSteinEstimator( eta=eta, J=20 )
+try:
+    score_estimator = SpectralSteinEstimator( eta=eta, J=J )
+except RuntimeError:
+    score_estimator = SpectralSteinEstimator( eta=eta, J=J, h=False )
 
 
 def make_hist(m,lim=1000000):

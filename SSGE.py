@@ -83,19 +83,22 @@ class BaseScoreEstimator:
 class SpectralSteinEstimator(BaseScoreEstimator):
     #
     # ~~~ Allow the user to specify eta for numerical stability as well as J for numerical fidelity
-    def __init__( self, samples, eta=None, J=None, sigma=None, h=True ):
+    def __init__( self, samples=None, eta=None, J=None, sigma=None, h=True ):
         self.eta = eta
         self.num_eigs = J
         self.samples = samples
         self.M = torch.tensor( samples.size(-2), dtype=samples.dtype, device=samples.device )
         self.sigma = self.heuristic_sigma(self.samples,self.samples) if sigma is None else sigma
-        self.eigen_decomposition(h=h)
+        self.h = h
+        if self.samples is not None:
+            self.eigen_decomposition(h=self.h)
     #
     # ~~~ NEW
     def eigen_decomposition(self,h=True):
         with torch.no_grad():
             #
             # ~~~ Build the kernel matrix, as well as the associated Jacobians
+            assert self.samples is not None
             xm = self.samples
             self.K, self.K_Jacobians = self.grad_gram( xm, xm, self.sigma )
             self.avg_jac = self.K_Jacobians.mean(dim=-3) # [M x D]
@@ -144,6 +147,8 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         # :param kernel_sigma: (Float) Kernel width
         # :return: Eigenfunction at x [N x M]
         # """
+        if not hasattr( self, "eigen_vals" ):
+            self.eigen_decomposition(h=self.h)
         K_mixed = self.gram_matrix( x, self.samples, self.sigma )
         phi_x =  torch.sqrt(self.M) * K_mixed @ self.eigen_vecs
         phi_x *= 1. / self.eigen_vals
