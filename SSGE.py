@@ -176,6 +176,9 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         # """
         with torch.no_grad():
             if samples is not None:
+                if self.samples is not None:
+                    my_warn("Previous samples will be overwritten.")
+                self.samples = samples
                 if hasattr( self, "eigen_vals" ):
                     my_warn("A new eigendecomposition is being done.")
                 self.setup()
