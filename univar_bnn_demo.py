@@ -7,7 +7,7 @@
 # ~~~ Standard packages
 import torch
 from torch import nn
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 
 #
@@ -18,7 +18,7 @@ from SSGE import SpectralSteinEstimator as SSGE
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
 from quality_of_life.my_visualization_utils import GifMaker, buffer, points_with_curves
-from quality_of_life.my_torch_utils         import convert_Tensors_to_Dataset
+from quality_of_life.my_torch_utils         import convert_Tensors_to_Dataset, nonredundant_copy_of_module_list
 from quality_of_life.my_numpy_utils         import moving_average
 from quality_of_life.my_base_utils          import support_for_progress_bars
 
@@ -62,11 +62,17 @@ J = 10          # ~~~ J in SSGE
 eta = 0.0001    # ~~~ stability term added to the SSGE's RBF kernel
 
 #
-# ~~~ Regarding visualizaing training as a .gif
+# ~~~ Regarding Stein GD
+n_Stein_particles = n_posterior_samples
+n_Stein_iterations = n_epochs
+
+#
+# ~~~ Regarding visualizaing of training
 make_gif = True         # ~~~ if true, aa .gif is made (even if false, the function is still plotted)
 how_often = 10          # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
 initial_frame_repetitions = 24  # ~~~ for how many frames should the state of initialization be rendered
 final_frame_repetitions = 48    # ~~~ for how many frames should the state after training be rendered
+plot_indivitual_NNs = False     # ~~~ if True, do *not* plot confidence intervals and, instead, plot only a few sampled nets
 
 
 
@@ -125,7 +131,8 @@ ground_truth = y_test.squeeze().cpu()   # ~~~ move to cpu in order to plot it
 ylim = buffer( ground_truth.tolist(), multiplier=0.2 )  # ~~~ infer a good ylim
 description_of_the_experiment = "Functional BNN Training" if functional else "Weight Space BNN Training (BBB)"
 def populate_figure( fig, ax , point_estimate=None, std=None, title=None ):
-    point_estimate, std = BNN.posterior_predicted_mean_and_std( x_test, n_posterior_samples ) if (point_estimate is None and std is None) else (point_estimate,std)
+    with torch.no_grad():
+        point_estimate, std = BNN.posterior_predicted_mean_and_std( x_test, n_posterior_samples ) if (point_estimate is None and std is None) else (point_estimate,std)
     green_curve, = ax.plot( grid, ground_truth, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
     blue_curve, = ax.plot( grid, point_estimate, label="Predicted Posterior Mean", linestyle="-", linewidth=.5, color="blue" )
     _ = ax.scatter( x_train.cpu(), y_train.cpu(), color="green" )
@@ -150,7 +157,7 @@ if make_gif:
     gif = GifMaker()
 
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
-    for e in tqdm(range(int(n_epochs))):
+    for e in trange( int(n_epochs), ascii=' >=', desc="Deterministic Training" ):
         #
         # ~~~ The actual training logic (totally conventional, hopefully familiar)
         for X, y in dataloader:
@@ -192,11 +199,13 @@ bandwidth_estimator = SSGE_backend().heuristic_sigma
 #
 # ~~~ Do GPR
 bw = 0.1 #bandwidth_estimator( x_test.unsqueeze(-1), x_train.unsqueeze(-1) )
-K_in    =   kernel_matrix( x_train.unsqueeze(-1), x_train.unsqueeze(-1), bw )
-K_out   =   kernel_matrix( x_test.unsqueeze(-1),  x_test.unsqueeze(-1),  bw )
-K_btwn  =   kernel_matrix( x_test.unsqueeze(-1),  x_train.unsqueeze(-1), bw )
-sigma2  =   ((NN(x_train)-y_train)**2).mean() if conditional_std=="auto" else torch.tensor(conditional_std)**2
-K_inv = torch.linalg.inv( K_in + sigma2*torch.eye(n_train,device=DEVICE) )
+K_in    =  kernel_matrix( x_train.unsqueeze(-1), x_train.unsqueeze(-1), bw )
+K_out   =  kernel_matrix( x_test.unsqueeze(-1),  x_test.unsqueeze(-1),  bw )
+K_btwn  =  kernel_matrix( x_test.unsqueeze(-1),  x_train.unsqueeze(-1), bw )
+with torch.no_grad():
+    sigma_squared = ((NN(x_train)-y_train)**2).mean() if conditional_std=="auto" else torch.tensor(conditional_std)**2
+
+K_inv = torch.linalg.inv( K_in + sigma_squared*torch.eye(n_train,device=DEVICE) )
 posterior_mean  =  (K_btwn@K_inv@y_train).squeeze()
 posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt()
 
@@ -339,6 +348,105 @@ def plot( metric, window_size=n_epochs/50 ):
     plt.plot( moving_average(history[metric],int(window_size)) )
     plt.grid()
     plt.tight_layout()
+    plt.show()
+
+
+
+### ~~~
+## ~~~ Do a Stein neural network ensemble
+### ~~~
+
+#
+# ~~~ Instantiate an ensemble
+ensemble = Ensemble(
+        architecture = nonredundant_copy_of_module_list(NN),
+        n_copies = n_Stein_particles,
+        Optimizer = lambda params: Optimizer( params, lr=lr ),
+        conditional_std = torch.tensor(conditional_std)
+    )
+
+#
+# ~~~ The dataloader
+dataloader = torch.utils.data.DataLoader( convert_Tensors_to_Dataset(x_train,y_train), batch_size=batch_size )
+
+#
+# ~~~ TODO: clean this up
+if plot_indivitual_NNs:
+    def ensemble_figure( fig, ax , point_estimate=None, std=None, title=None, how_many=18 ):
+        with torch.no_grad():
+            preds = ensemble(x_test)
+        green_curve, = ax.plot( grid, ground_truth, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
+        for j in range(how_many):
+            j+= 80
+            blue_curve, = ax.plot( grid, preds[:,j].cpu(), label=f"Network {j}", linestyle="-", linewidth=.5, color="blue" )
+        _ = ax.scatter( x_train.cpu(), y_train.cpu(), color="green" )
+        _ = ax.set_ylim(ylim)
+        _ = ax.legend()
+        _ = ax.grid()
+        _ = ax.set_title( description_of_the_experiment if title is None else title )
+        _ = fig.tight_layout()
+        return fig, ax
+else:
+    def ensemble_figure(fig,ax):
+        with torch.no_grad():
+            preds = ensemble(x_test)
+            return populate_figure( fig, ax, point_estimate=preds.mean(dim=-1).cpu(), std=preds.std(dim=-1).cpu(), title="Stein Neural Network Ensemble" )
+
+#
+# ~~~ Plot the state of the posterior predictive distribution at the end of training
+if not make_gif:    # ~~~ make a plot now
+    fig,ax = plt.subplots(figsize=(12,6))
+
+fig,ax = ensemble_figure(fig,ax)
+
+if make_gif:
+    for j in range(final_frame_repetitions):
+        gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
+    gif.develop( destination="Stein Ensemble", fps=24 )
+else:
+    plt.show()
+
+#
+# ~~~ Plot the state of the posterior predictive distribution upon its initialization
+if make_gif:
+    gif = GifMaker()      # ~~~ essentially just a list of images
+    fig,ax = plt.subplots(figsize=(12,6))
+    fig,ax = ensemble_figure(fig,ax)
+    for j in range(initial_frame_repetitions):
+        gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
+
+#
+# ~~~ Do the actual training loop
+K_history, grads_of_K_history = [], []
+with support_for_progress_bars():   # ~~~ this just supports green progress bars
+    for e in trange( n_epochs, ascii=' >=', desc="Stein Enemble" ):
+        #
+        # ~~~ Training logic
+        for X, y in dataloader:
+            X, y = X.to(DEVICE), y.to(DEVICE)
+            # ensemble.train_step(X,y)
+            K, grads_of_K = ensemble.train_step(X,y)
+            K_history.append( (torch.eye( *K.shape, device=K.device ) - K).abs().mean().item() )
+            grads_of_K_history.append( grads_of_K.abs().mean().item() )
+        #
+        # ~~~ Plotting logic
+        if make_gif and n_posterior_samples>0 and (e+1)%how_often==0:
+            fig,ax = ensemble_figure(fig,ax)
+            gif.capture()
+            # print("captured")
+
+#
+# ~~~ Plot the state of the posterior predictive distribution at the end of training
+if not make_gif:    # ~~~ make a plot now
+    fig,ax = plt.subplots(figsize=(12,6))
+
+fig,ax = ensemble_figure(fig,ax)
+
+if make_gif:
+    for j in range(final_frame_repetitions):
+        gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
+    gif.develop( destination="Stein Ensemble", fps=24 )
+else:
     plt.show()
 
 #
