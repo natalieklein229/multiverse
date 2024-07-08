@@ -19,10 +19,10 @@ ground_truth = lambda x: -x
 score = ground_truth(x)
 samples = torch.randn( M, 1, device=device  )
 try:
-    score_estimator = SpectralSteinEstimator( samples=sample, eta=eta )
+    score_estimator = SpectralSteinEstimator( samples=samples, eta=eta )
 except RuntimeError:
     print("Using eig instead of eigh due to the pytorch source code bug.")
-    score_estimator = SpectralSteinEstimator( samples=sample, eta=eta, h=False )
+    score_estimator = SpectralSteinEstimator( samples=samples, eta=eta, h=False )
     
 est_score = score_estimator(x)
 

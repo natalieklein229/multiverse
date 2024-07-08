@@ -25,9 +25,9 @@ score = ground_truth(test_points)
 def make_hist(m,lim=1000000):
     samples = torch.randn( m, D, device=device )
     try:
-        score_estimator = SpectralSteinEstimator( eta=eta, J=J )
+        score_estimator = SpectralSteinEstimator( samples=samples, eta=eta, J=J )
     except RuntimeError:
-        score_estimator = SpectralSteinEstimator( eta=eta, J=J, h=False )
+        score_estimator = SpectralSteinEstimator( samples=samples, eta=eta, J=J, h=False )
     est_score = score_estimator(test_points)
     errors = ((est_score-score)**2).sum(dim=-1).cpu()
     lim = min(np.percentile(errors,90),lim)
