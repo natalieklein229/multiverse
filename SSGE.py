@@ -77,7 +77,7 @@ class BaseScoreEstimator:
     #
     # ~~~ The `__call__` method just calls `compute_score_gradients`
     def __call__( self, x, *args, **kwargs ):
-        return self.compute_score_gradients( x. *args, **kwargs )
+        return self.compute_score_gradients( x, *args, **kwargs )
 
 
 class SpectralSteinEstimator(BaseScoreEstimator):
