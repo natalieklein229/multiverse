@@ -77,12 +77,12 @@ class SequentialGaussianBNN(nn.Module):
         self.conditional_std = torch.tensor(0.001)
         #
         # ~~~ NEW attributes for SSGE and functional training
-        self.J_prior   = 10
-        self.J_post    = 10
-        self.eta_prior = 10
-        self.eta_post  = 10
-        self.M_prior   = 50
-        self.M_post    = 50
+        self.prior_J   = 10
+        self.post_J    = 10
+        self.prior_eta = 10
+        self.post_eta  = 10
+        self.prior_M   = 50
+        self.post_M    = 50
         self.measurement_set = None
         self.prior_SSGE      = None
         self.use_eigh        = True
@@ -187,16 +187,16 @@ class SequentialGaussianBNN(nn.Module):
     # ~~~ NEW
     def setup_prior_SSGE(self):
         with torch.no_grad():
-            prior_samples = torch.column_stack([ self.prior_forward( self.measurement_set ) for _ in range(self.M_prior) ]).T
+            prior_samples = torch.column_stack([ self.prior_forward( self.measurement_set ) for _ in range(self.prior_M) ]).T
             try:
-                self.prior_SSGE = SSGE( samples=prior_samples, eta=self.eta_prior, J=self.J_prior, h=self.use_eigh )
+                self.prior_SSGE = SSGE( samples=prior_samples, eta=self.prior_eta, J=self.prior_J, h=self.use_eigh )
             except RuntimeError:
                 self.use_eigh = False
                 my_warn("Due to a bug in the pytorch source code, BNN.use_eigh has been set to False")
-                self.prior_SSGE = SSGE( samples=prior_samples, eta=self.eta_prior, J=self.J_prior, h=self.use_eigh )
+                self.prior_SSGE = SSGE( samples=prior_samples, eta=self.prior_eta, J=self.prior_J, h=self.use_eigh )
     #
     # ~~~ NEW
-    def sample_measurement_set(self):
+    def sample_new_measurement_set(self):
         raise NotImplementedError("In order to resample a measurement set, you must assign `self.sample_measurement_set=my_method` where `my_method` accepts the argument `self` and assigns a value to `self.meaurementset=___`.")
         # self.measurement_set = ???
     #
@@ -211,8 +211,8 @@ class SequentialGaussianBNN(nn.Module):
         with torch.no_grad():
             if self.prior_SSGE is None:
                 self.setup_prior_SSGE()
-            posterior_samples = torch.column_stack([ self( self.measurement_set ) for _ in range(self.M_post) ]).T
-            posterior_SSGE = SSGE( samples=posterior_samples, eta=self.eta_prior, J=self.J_prior, h=self.use_eigh )
+            posterior_samples = torch.column_stack([ self( self.measurement_set ) for _ in range(self.post_M) ]).T
+            posterior_SSGE = SSGE( samples=posterior_samples, eta=self.post_eta, J=self.J_post, h=self.use_eigh )
         #
         # ~~~ By the chain rule, at these points we must (use SSGE to) compute the scores          
         yhat = self( self.measurement_set )
