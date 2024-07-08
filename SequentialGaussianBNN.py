@@ -212,7 +212,7 @@ class SequentialGaussianBNN(nn.Module):
             if self.prior_SSGE is None:
                 self.setup_prior_SSGE()
             posterior_samples = torch.column_stack([ self( self.measurement_set ) for _ in range(self.post_M) ]).T
-            posterior_SSGE = SSGE( samples=posterior_samples, eta=self.post_eta, J=self.J_post, h=self.use_eigh )
+            posterior_SSGE = SSGE( samples=posterior_samples, eta=self.post_eta, J=self.post_J, h=self.use_eigh )
         #
         # ~~~ By the chain rule, at these points we must (use SSGE to) compute the scores          
         yhat = self( self.measurement_set )
