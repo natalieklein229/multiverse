@@ -23,7 +23,7 @@ try:
 except RuntimeError:
     print("Using eig instead of eigh due to the pytorch source code bug.")
     score_estimator = SpectralSteinEstimator( samples=samples, eta=eta, h=False )
-    
+
 est_score = score_estimator(x)
 
 
@@ -32,6 +32,6 @@ x = x.cpu()
 plt.plot( x, score.cpu(), lw = 2, label = r"$\nabla_x \log(x)$" )
 plt.plot( x, est_score.cpu(), lw = 2, label = r"$\hat{\nabla}_x \log(x)$" )
 plt.plot( x, -x**2/2, lw = 2, label = r"$\log(x)$")
-plt.title(f"Gaussian Distribution with {M} samples with $\eta$ = {eta}", fontsize = 15)
+plt.title(f"Gaussian Distribution with {M} samples with " + r"$\eta$" + f" = {eta}", fontsize = 15)
 plt.legend(fontsize =15)
 plt.show()
