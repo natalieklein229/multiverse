@@ -192,6 +192,7 @@ class SequentialGaussianBNN(nn.Module):
                 self.prior_SSGE = SSGE( samples=prior_samples, eta=self.eta_prior, J=self.J_prior, h=self.use_eigh )
             except RuntimeError:
                 self.use_eigh = False
+                my_warn("Due to a bug in the pytorch source code, BNN.use_eigh has been set to False")
                 self.prior_SSGE = SSGE( samples=prior_samples, eta=self.eta_prior, J=self.J_prior, h=self.use_eigh )
     #
     # ~~~ NEW

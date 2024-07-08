@@ -14,7 +14,7 @@ try:
     samples = torch.randn( M, D, device=device )
     xm = samples
     x = test_points
-    self = SpectralSteinEstimator( eta=eta, samples=xm )
+    self = SpectralSteinEstimator( eta=eta, samples=xm, h=False )
     _xm = torch.cat((x, xm), dim=-2)
     sigma = self.heuristic_sigma(_xm, _xm)
     M = torch.tensor( xm.size(-2), dtype=torch.float )

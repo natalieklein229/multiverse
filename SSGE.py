@@ -108,9 +108,9 @@ class SpectralSteinEstimator(BaseScoreEstimator):
             if self.num_eigs is None:
                 try:
                     eigen_vals, eigen_vecs = torch.linalg.eigh(self.K) if h else torch.linalg.eig(self.K)
-                except RuntimeError as e:
-                    my_warn("Switching to eig instead of eigh due to the eigh bug in the source pytorch code")
-                    eigen_vals, eigen_vecs = torch.linalg.eig(self.K)
+                except RuntimeError:
+                    my_warn("There is a bug in the source torch.linalg.eigh code. Specify h=False to use torch.linalg.eig instead")
+                    raise
                 eigen_vals, eigen_vecs = eigen_vals.flip([0]), eigen_vecs.flip([1])
             else:
                 U, s, V  = torch.svd_lowrank( self.K, q=min(self.K.shape[0],self.num_eigs) )
