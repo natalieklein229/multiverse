@@ -93,7 +93,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
     #
     # ~~~ NEW
     def setup(self):
-        assert self.samples is not None:
+        assert self.samples is not None
         self.M = torch.tensor( samples.size(-2), dtype=samples.dtype, device=samples.device )
         self.sigma = self.heuristic_sigma(self.samples,self.samples) if sigma is None else sigma
         self.eigen_decomposition(h=self.h)
