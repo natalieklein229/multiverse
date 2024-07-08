@@ -268,25 +268,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
                 #
                 # ~~~ Compute the gradient of the loss function
                 if functional:
-                    # #
-                    # # ~~~ First produce the IID samples needed for the SSGE (and shape them in the form that our implementation of SSGE expects)
-                    # with torch.no_grad():
-                    #     posterior_samples   =   torch.column_stack([ BNN(x_train) for _ in range(M) ]).T
-                    #     prior_samples       =   torch.column_stack([ BNN.prior_forward(x_train) for _ in range(M) ]).T
-                    # #
-                    # # ~~~ Sample from the posterior distribution 
-                    # yhat = BNN(x_train)
-                    # #
-                    # # ~~~ Use SSGE to compute "the intractible parts of the gradient"
-                    # with torch.no_grad():
-                    #     posterior_score_at_yhat =   SSGE( posterior_samples, eta=eta, J=J )( yhat.reshape(1,-1) )
-                    #     prior_score_at_yhat     =   SSGE(   prior_samples,   eta=eta, J=J )( yhat.reshape(1,-1) )
-                    # #
-                    # # ~~~ Finally, compute the gradients of each of the three terms
-                    # log_posterior_density   =   (posterior_score_at_yhat @ yhat).squeeze()  # ~~~ the inner product from the chain rule
-                    # log_prior_density       =   (prior_score_at_yhat @ yhat).squeeze()      # ~~~ the inner product from the chain rule
                     log_posterior_density, log_prior_density = BNN.functional_kl(resample_measurement_set=False)
-                    # log_likelihood_density  =   log_gaussian_pdf( where=y_train, mu=BNN(X,resample_weights=False), sigma=BNN.conditional_std )
                 else:
                     BNN.sample_from_standard_normal()   # ~~~ draw a new Monte-Carlo sample for estimating the integrals as an MC average
                     log_posterior_density   =   BNN.log_posterior_density()
