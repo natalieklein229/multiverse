@@ -158,7 +158,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         return phi_x
     #
     # ~~~ Actually estimate \grad \ln(q(x))
-    def compute_score_gradients(self,x):
+    def compute_score_gradients( self, x, samples=None ):
         # """
         # Computes the Spectral Stein Gradient Estimate (SSGE) for the
         # score function. The SSGE is given by
@@ -175,7 +175,9 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         # :return: gradient estimate [N x D]
         # """
         with torch.no_grad():
-            if not hasattr( self, "eigen_vals" ):
+            if samples is not None:
+                is hasattr( self, "eigen_vals" ):
+                    my_warn("A new eigendecomposition is being done.")
                 self.setup()
             Phi_x = self.Phi(x) # [N x M]
             beta = - torch.sqrt(self.M) * self.eigen_vecs.T @ self.avg_jac
