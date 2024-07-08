@@ -27,22 +27,22 @@ class BaseScoreEstimator:
     #
     # ~~~ Method that gram matrix, as well as, the Jacobian matrices which get averaged when computing \beta
     def grad_gram( self, x1, x2, sigma ):
-        """
-        Computes the gradients of the RBF gram matrix with respect
-        to the inputs x1 an x2. It is given by
-        .. math::
-            \nabla_x1 k(x1, x2) = k(x1, x2) \frac{x1- x2}{\sigma^2}
-        
-            \nabla_x2 k(x1, x2) = k(x1, x2) -\frac{x1- x2}{\sigma^2}
-        
-        :param x1: (Tensor) [N x D]
-        :param x2: (Tensor) [M x D]
-        :param sigma: (Float) Width of the RBF kernel
-        :return: Gram matrix [N x M],
-                 gradients with respect to x1 [N x M x D],
-                 # gradients with respect to x2 [N x M x D]
-        
-        """
+        # """
+        # Computes the gradients of the RBF gram matrix with respect
+        # to the inputs x1 an x2. It is given by
+        # .. math::
+        #     \nabla_x1 k(x1, x2) = k(x1, x2) \frac{x1- x2}{\sigma^2}
+        #
+        #     \nabla_x2 k(x1, x2) = k(x1, x2) -\frac{x1- x2}{\sigma^2}
+        #
+        # :param x1: (Tensor) [N x D]
+        # :param x2: (Tensor) [M x D]
+        # :param sigma: (Float) Width of the RBF kernel
+        # :return: Gram matrix [N x M],
+        #          gradients with respect to x1 [N x M x D],
+        #          # gradients with respect to x2 [N x M x D]
+        #
+        # """
         with torch.no_grad():
             Kxx = self.gram_matrix(x1,x2,sigma)
             x1 = x1.unsqueeze(-2)  # Make it into a column tensor
