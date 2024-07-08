@@ -72,12 +72,12 @@ class BaseScoreEstimator:
     #
     # ~~~ Placeholder method for the content of __call__(...)
     @abstractmethod
-    def compute_score_gradients(self,x):
+    def compute_score_gradients( self, x ):
         raise NotImplementedError
     #
     # ~~~ The `__call__` method just calls `compute_score_gradients`
-    def __call__(self,x):
-        return self.compute_score_gradients(x)
+    def __call__( self, x, *args, **kwargs ):
+        return self.compute_score_gradients( x, *args, **kwargs )
 
 
 class SpectralSteinEstimator(BaseScoreEstimator):
