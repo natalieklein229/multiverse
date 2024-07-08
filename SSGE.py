@@ -9,6 +9,7 @@ import math
 import torch
 from typing import Callable, List, Tuple
 from abc import abstractmethod
+from quality_of_life.my_base_utils import my_warn
 
 
 class BaseScoreEstimator:
@@ -82,16 +83,16 @@ class BaseScoreEstimator:
 class SpectralSteinEstimator(BaseScoreEstimator):
     #
     # ~~~ Allow the user to specify eta for numerical stability as well as J for numerical fidelity
-    def __init__( self, samples, eta=None, J=None, sigma=None ):
+    def __init__( self, samples, eta=None, J=None, sigma=None, h=True ):
         self.eta = eta
         self.num_eigs = J
         self.samples = samples
         self.M = torch.tensor( samples.size(-2), dtype=samples.dtype, device=samples.device )
         self.sigma = self.heuristic_sigma(self.samples,self.samples) if sigma is None else sigma
-        self.eigen_decomposition()
+        self.eigen_decomposition(h=h)
     #
     # ~~~ NEW
-    def eigen_decomposition(self):
+    def eigen_decomposition(self,h=True):
         with torch.no_grad():
             #
             # ~~~ Build the kernel matrix, as well as the associated Jacobians
@@ -105,7 +106,12 @@ class SpectralSteinEstimator(BaseScoreEstimator):
             #
             # ~~~ Do the actual eigen-decomposition
             if self.num_eigs is None:
-                eigen_vals, eigen_vecs = torch.linalg.eigh(self.K)
+                try:
+                    eigen_vals, eigen_vecs = torch.linalg.eigh(self.K) if h else torch.linalg.eig(self.K)
+                except RuntimeError, e:
+                    my_warn("Switching to eig instead of eigh due to the following error")
+                    print(str(e))
+                    eigen_vals, eigen_vecs = torch.linalg.eig(self.K)
                 eigen_vals, eigen_vecs = eigen_vals.flip([0]), eigen_vecs.flip([1])
             else:
                 U, s, V  = torch.svd_lowrank( self.K, q=min(self.K.shape[0],self.num_eigs) )

@@ -2,11 +2,6 @@
 
 import torch
 from SSGE import SpectralSteinEstimator
-from matplotlib import pyplot as plt
-import math
-import numpy as np
-from quality_of_life.my_visualization_utils import *
-from tqdm import trange
 
 torch.manual_seed(1234)
 M = 3000   # ~~~ will be implicity rounded *down* the the nearest square number: int(sqrt(M))**2
