@@ -19,16 +19,16 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 test_points = torch.randn( n_test, D, device=device )
 ground_truth = lambda x: -x
 score = ground_truth(test_points)
-try:
-    score_estimator = SpectralSteinEstimator( eta=eta, J=J )
-except RuntimeError:
-    print("Using eig instead of eigh due to the pytorch source code bug.")
-    score_estimator = SpectralSteinEstimator( eta=eta, J=J, h=False )
+
 
 
 def make_hist(m,lim=1000000):
     samples = torch.randn( m, D, device=device )
-    est_score = score_estimator(test_points,samples)
+    try:
+        score_estimator = SpectralSteinEstimator( eta=eta, J=J )
+    except RuntimeError:
+        score_estimator = SpectralSteinEstimator( eta=eta, J=J, h=False )
+    est_score = score_estimator(test_points)
     errors = ((est_score-score)**2).sum(dim=-1).cpu()
     lim = min(np.percentile(errors,90),lim)
     errors = errors[errors<np.percentile(errors,90)]

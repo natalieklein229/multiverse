@@ -72,38 +72,31 @@ class BaseScoreEstimator:
     #
     # ~~~ Placeholder method for the content of __call__(...)
     @abstractmethod
-    def compute_score_gradients( self, x ):
+    def compute_score_gradients(self,x):
         raise NotImplementedError
     #
     # ~~~ The `__call__` method just calls `compute_score_gradients`
-    def __call__( self, x, *args, **kwargs ):
-        return self.compute_score_gradients( x, *args, **kwargs )
+    def __call__( self, x *args, **kwargs ):
+        return self.compute_score_gradients( x. *args, **kwargs )
 
 
 class SpectralSteinEstimator(BaseScoreEstimator):
     #
     # ~~~ Allow the user to specify eta for numerical stability as well as J for numerical fidelity
-    def __init__( self, samples=None, eta=None, J=None, sigma=None, h=True ):
+    def __init__( self, samples, eta=None, J=None, sigma=None, h=True ):
         self.eta = eta
         self.num_eigs = J
         self.samples = samples
         self.h = h
-        if self.samples is not None:
-            self.setup()
-    #
-    # ~~~ NEW
-    def setup(self):
-        assert self.samples is not None
         self.M = torch.tensor( samples.size(-2), dtype=samples.dtype, device=samples.device )
         self.sigma = self.heuristic_sigma(self.samples,self.samples) if sigma is None else sigma
-        self.eigen_decomposition(h=self.h)
+        self.eigen_decomposition()
     #
     # ~~~ NEW
-    def eigen_decomposition(self,h=True):
+    def eigen_decomposition(self):
         with torch.no_grad():
             #
             # ~~~ Build the kernel matrix, as well as the associated Jacobians
-            assert self.samples is not None
             xm = self.samples
             self.K, self.K_Jacobians = self.grad_gram( xm, xm, self.sigma )
             self.avg_jac = self.K_Jacobians.mean(dim=-3) # [M x D]
@@ -115,7 +108,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
             # ~~~ Do the actual eigen-decomposition
             if self.num_eigs is None:
                 try:
-                    eigen_vals, eigen_vecs = torch.linalg.eigh(self.K) if h else torch.linalg.eig(self.K)
+                    eigen_vals, eigen_vecs = torch.linalg.eigh(self.K) if self.h else torch.linalg.eig(self.K)
                 except RuntimeError:
                     my_warn("There is a bug in the source torch.linalg.eigh code. Specify h=False to use torch.linalg.eig instead")
                     raise
@@ -152,13 +145,14 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         # :param kernel_sigma: (Float) Kernel width
         # :return: Eigenfunction at x [N x M]
         # """
-        K_mixed = self.gram_matrix( x, self.samples, self.sigma )
-        phi_x =  torch.sqrt(self.M) * K_mixed @ self.eigen_vecs
-        phi_x *= 1. / self.eigen_vals
-        return phi_x
+        with torch.no_grad():
+            K_mixed = self.gram_matrix( x, self.samples, self.sigma )
+            phi_x =  torch.sqrt(self.M) * K_mixed @ self.eigen_vecs
+            phi_x *= 1. / self.eigen_vals
+            return phi_x
     #
     # ~~~ Actually estimate \grad \ln(q(x))
-    def compute_score_gradients( self, x, samples=None ):
+    def compute_score_gradients(self,x):
         # """
         # Computes the Spectral Stein Gradient Estimate (SSGE) for the
         # score function. The SSGE is given by
@@ -175,13 +169,6 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         # :return: gradient estimate [N x D]
         # """
         with torch.no_grad():
-            if samples is not None:
-                if self.samples is not None:
-                    my_warn("Previous samples will be overwritten.")
-                self.samples = samples
-                if hasattr( self, "eigen_vals" ):
-                    my_warn("A new eigendecomposition is being done.")
-                self.setup()
             Phi_x = self.Phi(x) # [N x M]
             beta = - torch.sqrt(self.M) * self.eigen_vecs.T @ self.avg_jac
             beta *= (1. / self.eigen_vals.unsqueeze(-1))
