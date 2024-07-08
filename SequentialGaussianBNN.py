@@ -85,6 +85,7 @@ class SequentialGaussianBNN(nn.Module):
         self.M_post    = 50
         self.measurement_set = None
         self.prior_SSGE      = None
+        self.use_eigh        = True
     #
     # ~~~ Sample according to a "standard normal distribution in the shape of our neural network"
     def sample_from_standard_normal(self):
@@ -92,10 +93,10 @@ class SequentialGaussianBNN(nn.Module):
             nn.init.normal_(p)
     #
     # ~~~ Sample the distribution of Y|X=x,W=w
-    def forward(self,x,resample=True):
+    def forward(self,x,resample_weights=True):
         #
         # ~~~ The realized sample of the distribution of Y|X=x,W=w is entirely determined by self.realized_standard_normal
-        if resample:
+        if resample_weights:
             self.sample_from_standard_normal()      # ~~~ this methods re-generates the values of weights and biases in `self.realized_standard_normal` (IID standard normal)
         #
         # ~~~ Basically, `x=layer(x)` for each layer in model, but with a twist on the weights
@@ -116,10 +117,10 @@ class SequentialGaussianBNN(nn.Module):
         return x
     #
     # ~~~ What the forward pass would be if we distributed weights according to the prior distribution
-    def prior_forward(self,x,resample=True):
+    def prior_forward(self,x,resample_weights=True):
         #
         # ~~~ The realized sample of the distribution of Y|X=x,W=w is entirely determined by self.realized_standard_normal
-        if resample:
+        if resample_weights:
             self.sample_from_standard_normal()      # ~~~ this methods re-generates the values of weights and biases in `self.realized_standard_normal` (IID standard normal)
         #
         # ~~~ Basically, `x=layer(x)` for each layer in model, but with a twist on the weights
@@ -141,7 +142,7 @@ class SequentialGaussianBNN(nn.Module):
     #
     # ~~~ Compute ln( f_{Y \mid X,W}(F_\theta(z),x_train,y_train) ) at a point z sampled from the standard MVN distribution ( F_\theta(z)=\mu+\sigma*z are the appropriately distributed network weights; \theta=(\mu,\sigma) )
     def log_likelihood_density( self, x_train, y_train ):
-        return log_gaussian_pdf( where=y_train, mu=self(x_train,resample=False), sigma=self.conditional_std )  # ~~~ Y|X,W is assumed to be normal with mean self(X) and variance self.conditional_std (the latter being a tunable hyper-parameter)
+        return log_gaussian_pdf( where=y_train, mu=self(x_train,resample_weights=False), sigma=self.conditional_std )  # ~~~ Y|X,W is assumed to be normal with mean self(X) and variance self.conditional_std (the latter being a tunable hyper-parameter)
     #
     # ~~~ Compute \ln( f_W(F_\theta(z)) ) at a point w sampled from the standard MVN distribution, where f_W is the prior PDF of the network parameters ( F_\theta(z)=\mu+\sigma*z are the appropriately distributed network weights; \theta=(\mu,\sigma) )
     def log_prior_density(self):
@@ -187,7 +188,11 @@ class SequentialGaussianBNN(nn.Module):
     def setup_prior_SSGE(self):
         with torch.no_grad():
             prior_samples = torch.column_stack([ self.prior_forward( self.measurement_set ) for _ in range(self.M_prior) ]).T
-            self.prior_SSGE = SSGE( samples=prior_samples, eta=self.eta_prior, J=self.J_prior )
+            try:
+                self.prior_SSGE = SSGE( samples=prior_samples, eta=self.eta_prior, J=self.J_prior, h=self.use_eigh )
+            except RuntimeError:
+                self.use_eigh = False
+                self.prior_SSGE = SSGE( samples=prior_samples, eta=self.eta_prior, J=self.J_prior, h=self.use_eigh )
     #
     # ~~~ NEW
     def sample_measurement_set(self):
@@ -195,18 +200,18 @@ class SequentialGaussianBNN(nn.Module):
         # self.measurement_set = ???
     #
     # ~~~ NEW
-    def functional_kl( self, resample=True ):
+    def functional_kl( self, resample_measurement_set=True ):
         #
-        # ~~~ if `resample==True` then generate a new meausrement set
-        if resample:
+        # ~~~ if `resample_measurement_set==True` then generate a new meausrement set
+        if resample_measurement_set:
             self.sample_new_measurement_set()
         #
         # ~~~ Prepare for using SSGE to estimate some of the gradient terms
         with torch.no_grad():
-            posterior_samples = torch.column_stack([ self( self.measurement_set ) for _ in range(self.M_post) ]).T
-            posterior_SSGE = SSGE( samples=posterior_samples, eta=self.eta_prior, J=self.J_prior )
             if self.prior_SSGE is None:
-                self.setup_prior_SSGE()  
+                self.setup_prior_SSGE()
+            posterior_samples = torch.column_stack([ self( self.measurement_set ) for _ in range(self.M_post) ]).T
+            posterior_SSGE = SSGE( samples=posterior_samples, eta=self.eta_prior, J=self.J_prior, h=self.use_eigh )
         #
         # ~~~ By the chain rule, at these points we must (use SSGE to) compute the scores          
         yhat = self( self.measurement_set )
