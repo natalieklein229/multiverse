@@ -87,11 +87,16 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         self.eta = eta
         self.num_eigs = J
         self.samples = samples
-        self.M = torch.tensor( samples.size(-2), dtype=samples.dtype, device=samples.device )
-        self.sigma = self.heuristic_sigma(self.samples,self.samples) if sigma is None else sigma
         self.h = h
         if self.samples is not None:
-            self.eigen_decomposition(h=self.h)
+            self.setup()
+    #
+    # ~~~ NEW
+    def setup(self):
+        assert self.samples is not None:
+        self.M = torch.tensor( samples.size(-2), dtype=samples.dtype, device=samples.device )
+        self.sigma = self.heuristic_sigma(self.samples,self.samples) if sigma is None else sigma
+        self.eigen_decomposition(h=self.h)
     #
     # ~~~ NEW
     def eigen_decomposition(self,h=True):
@@ -171,7 +176,7 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         # """
         with torch.no_grad():
             if not hasattr( self, "eigen_vals" ):
-                self.eigen_decomposition(h=self.h)
+                self.setup()
             Phi_x = self.Phi(x) # [N x M]
             beta = - torch.sqrt(self.M) * self.eigen_vecs.T @ self.avg_jac
             beta *= (1. / self.eigen_vals.unsqueeze(-1))
