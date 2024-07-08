@@ -285,7 +285,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
                     # # ~~~ Finally, compute the gradients of each of the three terms
                     # log_posterior_density   =   (posterior_score_at_yhat @ yhat).squeeze()  # ~~~ the inner product from the chain rule
                     # log_prior_density       =   (prior_score_at_yhat @ yhat).squeeze()      # ~~~ the inner product from the chain rule
-                    log_posterior_density, log_prior_density = self.functional_kl(resample_measurement_set=False)
+                    log_posterior_density, log_prior_density = BNN.functional_kl(resample_measurement_set=False)
                     # log_likelihood_density  =   log_gaussian_pdf( where=y_train, mu=BNN(X,resample_weights=False), sigma=BNN.conditional_std )
                 else:
                     BNN.sample_from_standard_normal()   # ~~~ draw a new Monte-Carlo sample for estimating the integrals as an MC average
