@@ -27,22 +27,22 @@ class BaseScoreEstimator:
     #
     # ~~~ Method that gram matrix, as well as, the Jacobian matrices which get averaged when computing \beta
     def grad_gram( self, x1, x2, sigma ):
-        """
-        Computes the gradients of the RBF gram matrix with respect
-        to the inputs x1 an x2. It is given by
-        .. math::
-            \nabla_x1 k(x1, x2) = k(x1, x2) \frac{x1- x2}{\sigma^2}
-
-            \nabla_x2 k(x1, x2) = k(x1, x2) -\frac{x1- x2}{\sigma^2}
-
-        :param x1: (Tensor) [N x D]
-        :param x2: (Tensor) [M x D]
-        :param sigma: (Float) Width of the RBF kernel
-        :return: Gram matrix [N x M],
-                 gradients with respect to x1 [N x M x D],
-                 # gradients with respect to x2 [N x M x D]
-
-        """
+        # """
+        # Computes the gradients of the RBF gram matrix with respect
+        # to the inputs x1 an x2. It is given by
+        # .. math::
+        #     \nabla_x1 k(x1, x2) = k(x1, x2) \frac{x1- x2}{\sigma^2}
+        #
+        #     \nabla_x2 k(x1, x2) = k(x1, x2) -\frac{x1- x2}{\sigma^2}
+        #
+        # :param x1: (Tensor) [N x D]
+        # :param x2: (Tensor) [M x D]
+        # :param sigma: (Float) Width of the RBF kernel
+        # :return: Gram matrix [N x M],
+        #          gradients with respect to x1 [N x M x D],
+        #          # gradients with respect to x2 [N x M x D]
+        #
+        # """
         with torch.no_grad():
             Kxx = self.gram_matrix(x1,x2,sigma)
             x1 = x1.unsqueeze(-2)  # Make it into a column tensor
@@ -53,16 +53,16 @@ class BaseScoreEstimator:
     #
     # ~~~ Method that heuristically chooses the bandwidth sigma for the RBF kernel
     def heuristic_sigma(self,x1,x2):
-        """
-        Uses the median-heuristic for selecting the
-        appropriate sigma for the RBF kernel based
-        on the given samples.
-        The kernel width is set to the median of the
-        pairwise distances between x and xm.
-        :param x: (Tensor) [N x D]
-        :param xm: (Tensor) [M x D]
-        :return:
-        """
+        # """
+        # Uses the median-heuristic for selecting the
+        # appropriate sigma for the RBF kernel based
+        # on the given samples.
+        # The kernel width is set to the median of the
+        # pairwise distances between x and xm.
+        # :param x: (Tensor) [N x D]
+        # :param xm: (Tensor) [M x D]
+        # :return:
+        # """
         with torch.no_grad():
             x1 = x1.unsqueeze(-2)   # Make it into a column tensor
             x2 = x2.unsqueeze(-3)  # Make it into a row tensor
@@ -116,34 +116,34 @@ class SpectralSteinEstimator(BaseScoreEstimator):
                 U, s, V  = torch.svd_lowrank( self.K, q=min(self.K.shape[0],self.num_eigs) )
                 eigen_vals = s
                 eigen_vecs = (U+V)/2    # ~~~ by my estimation, because Kxx is symmetric, we actually expect U==V; we are only averaging out the arithmetic errors
-            """
-            instead of:
-            eigen_vals, eigen_vecs = torch.linalg.eig(Kxx)
-            eigen_vals, eigen_vecs = eigen_vals.to(torch.get_default_dtype()), eigen_vecs.to(torch.get_default_dtype())
-            if self.num_eigs is not None:
-                eigen_vals = eigen_vals[:self.num_eigs]
-                eigen_vecs = eigen_vecs[:, :self.num_eigs]
-            """
+            # """
+            # instead of:
+            # eigen_vals, eigen_vecs = torch.linalg.eig(Kxx)
+            # eigen_vals, eigen_vecs = eigen_vals.to(torch.get_default_dtype()), eigen_vecs.to(torch.get_default_dtype())
+            # if self.num_eigs is not None:
+            #     eigen_vals = eigen_vals[:self.num_eigs]
+            #     eigen_vecs = eigen_vecs[:, :self.num_eigs]
+            # """
             self.eigen_vals, self.eigen_vecs = eigen_vals, eigen_vecs
     #
     # ~~~ Compute \widehat{Phi}(x)
     def Phi(self,x):
-        """
-        Implements the Nystrom method for approximating the
-        eigenfunction (generalized eigenvectors) for the kernel
-        at x using the M eval_points (x_m). It is given
-        by -
-
-         .. math::
-            phi_j(x) = \frac{M}{\lambda_j} \sum_{m=1}^M u_{jm} k(x, x_m)
-
-        :param x: (Tensor) Point at which the eigenfunction is evaluated [N x D]
-        :param eval_points: (Tensor) Sample points from the data of ize M [M x D]
-        :param eigen_vecs: (Tensor) Eigenvectors of the gram matrix [M x M]
-        :param eigen_vals: (Tensor) Eigenvalues of the gram matrix [M x 2]
-        :param kernel_sigma: (Float) Kernel width
-        :return: Eigenfunction at x [N x M]
-        """
+        # """
+        # Implements the Nystrom method for approximating the
+        # eigenfunction (generalized eigenvectors) for the kernel
+        # at x using the M eval_points (x_m). It is given
+        # by -
+        #
+        #  .. math::
+        #     phi_j(x) = \frac{M}{\lambda_j} \sum_{m=1}^M u_{jm} k(x, x_m)
+        #
+        # :param x: (Tensor) Point at which the eigenfunction is evaluated [N x D]
+        # :param eval_points: (Tensor) Sample points from the data of ize M [M x D]
+        # :param eigen_vecs: (Tensor) Eigenvectors of the gram matrix [M x M]
+        # :param eigen_vals: (Tensor) Eigenvalues of the gram matrix [M x 2]
+        # :param kernel_sigma: (Float) Kernel width
+        # :return: Eigenfunction at x [N x M]
+        # """
         K_mixed = self.gram_matrix( x, self.samples, self.sigma )
         phi_x =  torch.sqrt(self.M) * K_mixed @ self.eigen_vecs
         phi_x *= 1. / self.eigen_vals
@@ -151,21 +151,21 @@ class SpectralSteinEstimator(BaseScoreEstimator):
     #
     # ~~~ Actually estimate \grad \ln(q(x))
     def compute_score_gradients(self,x):
-        """
-        Computes the Spectral Stein Gradient Estimate (SSGE) for the
-        score function. The SSGE is given by
-
-        .. math::
-            \nabla_{xi} phi_j(x) = \frac{1}{\mu_j M} \sum_{m=1}^M \nabla_{xi}k(x,x^m) \phi_j(x^m)
-
-            \beta_{ij} = -\frac{1}{M} \sum_{m=1}^M \nabla_{xi} phi_j (x^m)
-
-            \g_i(x) = \sum_{j=1}^J \beta_{ij} \phi_j(x)
-
-        :param x: (Tensor) Point at which the gradient is evaluated [N x D]
-        :param xm: (Tensor) Samples for the kernel [M x D]
-        :return: gradient estimate [N x D]
-        """
+        # """
+        # Computes the Spectral Stein Gradient Estimate (SSGE) for the
+        # score function. The SSGE is given by
+        # 
+        # .. math::
+        #     \nabla_{xi} phi_j(x) = \frac{1}{\mu_j M} \sum_{m=1}^M \nabla_{xi}k(x,x^m) \phi_j(x^m)
+        #
+        #     \beta_{ij} = -\frac{1}{M} \sum_{m=1}^M \nabla_{xi} phi_j (x^m)
+        #
+        #     \g_i(x) = \sum_{j=1}^J \beta_{ij} \phi_j(x)
+        #
+        # :param x: (Tensor) Point at which the gradient is evaluated [N x D]
+        # :param xm: (Tensor) Samples for the kernel [M x D]
+        # :return: gradient estimate [N x D]
+        # """
         with torch.no_grad():
             Phi_x = self.Phi(x) # [N x M]
             beta = - torch.sqrt(self.M) * self.eigen_vecs.T @ self.avg_jac
