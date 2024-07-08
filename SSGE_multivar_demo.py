@@ -22,6 +22,7 @@ score = ground_truth(test_points)
 try:
     score_estimator = SpectralSteinEstimator( eta=eta, J=J )
 except RuntimeError:
+    print("Using eig instead of eigh due to the pytorch source code bug.")
     score_estimator = SpectralSteinEstimator( eta=eta, J=J, h=False )
 
 

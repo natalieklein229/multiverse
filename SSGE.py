@@ -147,8 +147,6 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         # :param kernel_sigma: (Float) Kernel width
         # :return: Eigenfunction at x [N x M]
         # """
-        if not hasattr( self, "eigen_vals" ):
-            self.eigen_decomposition(h=self.h)
         K_mixed = self.gram_matrix( x, self.samples, self.sigma )
         phi_x =  torch.sqrt(self.M) * K_mixed @ self.eigen_vecs
         phi_x *= 1. / self.eigen_vals
@@ -172,6 +170,8 @@ class SpectralSteinEstimator(BaseScoreEstimator):
         # :return: gradient estimate [N x D]
         # """
         with torch.no_grad():
+            if not hasattr( self, "eigen_vals" ):
+                self.eigen_decomposition(h=self.h)
             Phi_x = self.Phi(x) # [N x M]
             beta = - torch.sqrt(self.M) * self.eigen_vecs.T @ self.avg_jac
             beta *= (1. / self.eigen_vals.unsqueeze(-1))

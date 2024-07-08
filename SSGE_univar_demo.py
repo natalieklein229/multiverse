@@ -20,6 +20,7 @@ score = ground_truth(x)
 try:
     score_estimator = SpectralSteinEstimator(eta=eta)
 except RuntimeError:
+    print("Using eig instead of eigh due to the pytorch source code bug.")
     score_estimator = SpectralSteinEstimator(eta=eta,h=False)
     
 samples = torch.randn( M, 1, device=device  )
