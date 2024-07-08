@@ -72,8 +72,8 @@ class SpectralSteinEstimator(BaseScoreEstimator):
                 self.K += self.eta * torch.eye( xm.size(-2), dtype=xm.dtype, device=xm.device )
             #
             # ~~~ Do the actual eigen-decomposition
-            if False:
-                eigen_vals, eigen_vecs = torch.linalg.eig(self.K)
+            if self.num_eigs is None:
+                eigen_vals, eigen_vecs = torch.linalg.eigh(self.K)
                 eigen_vals, eigen_vecs = eigen_vals.flip([0]), eigen_vecs.flip([1])
             else:
                 U, s, V  = torch.svd_lowrank( self.K, q=min(self.K.shape[0],self.num_eigs) )
