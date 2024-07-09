@@ -372,7 +372,7 @@ dataloader = torch.utils.data.DataLoader( convert_Tensors_to_Dataset(x_train,y_t
 #
 # ~~~
 description_of_the_experiment = "Stein Neural Network Ensemble"
-if PLOT_INDIVIDUAL_NNs:
+if plot_indivitual_NNs:
     def ensemble_figure( fig, ax , point_estimate=None, std=None, title=None, how_many=18 ):
         with torch.no_grad():
             preds = ensemble(x_test)
