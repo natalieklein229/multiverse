@@ -370,8 +370,9 @@ ensemble = Ensemble(
 dataloader = torch.utils.data.DataLoader( convert_Tensors_to_Dataset(x_train,y_train), batch_size=batch_size )
 
 #
-# ~~~ TODO: clean this up
-if plot_indivitual_NNs:
+# ~~~
+description_of_the_experiment = "Stein Neural Network Ensemble"
+if PLOT_INDIVIDUAL_NNs:
     def ensemble_figure( fig, ax , point_estimate=None, std=None, title=None, how_many=18 ):
         with torch.no_grad():
             preds = ensemble(x_test)
@@ -391,20 +392,6 @@ else:
         with torch.no_grad():
             preds = ensemble(x_test)
             return populate_figure( fig, ax, point_estimate=preds.mean(dim=-1).cpu(), std=preds.std(dim=-1).cpu(), title="Stein Neural Network Ensemble" )
-
-#
-# ~~~ Plot the state of the posterior predictive distribution at the end of training
-if not make_gif:    # ~~~ make a plot now
-    fig,ax = plt.subplots(figsize=(12,6))
-
-fig,ax = ensemble_figure(fig,ax)
-
-if make_gif:
-    for j in range(final_frame_repetitions):
-        gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
-    gif.develop( destination="Stein Ensemble", fps=24 )
-else:
-    plt.show()
 
 #
 # ~~~ Plot the state of the posterior predictive distribution upon its initialization
