@@ -46,6 +46,7 @@ if make_gif:
         new_lim = make_hist( m+5, lim )
         lim = min(lim,new_lim)
         gif.capture()
+    # gif.develop( destination="intended_filename", fps=24 ) # if you want to save the .gif
 else:
     make_hist(M)
     plt.show()
