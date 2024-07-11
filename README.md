@@ -33,15 +33,19 @@ I believe, the complete list of required dependencies, excluding the standard li
 
 0. Open the terminal and say `conda env list` to confirm that the code is not present already.
 
-1. (_create an env_) `conda create --name BNNs python=3.10` (if desired, you can swap `BNNs` for your preferred name).
+1. (_create an env with standard / easy-to-install packages_) `conda create --name bnns python=3.10 tqdm matplotlib numpy plotly scipy pip` (if desired, you can swap `bnns` for your preferred name).
 
-2. (_activate the env_) `conda activate BNNs`
+2. (_activate the env for further installs_) `conda activate bnns`.
 
-3. (_install packages to the active env_) `conda install ___` for each of the required packages listed under **Dependencies**, where you replace `___` by the name of the python package. For `pyreadr`, either use `pip` instead of `conda`, or set the necessary `conda` channel.
+3. (_install pytorch_) This may depend on whether you want cuda, and on your conda channels. The simplest approach is: first try `conda install pytorch`. If that doesn't work (probably because channels) then try instead `pip install torch`.
 
-4. (_install quality_of_life to the active env_) Navigate into your Documents folder, create a folder with `mkdir quality_of_life`, cd into the directory you just created with `cd ./quality_of_life`, from there `git clone https://github.com/ThomasLastName/quality_of_life.git`, then copy the setup.py file to the necessary location with `cp ./quality_of_life/setup.py ./setup.py`, confirm that `ls` returns only `quality_of_life` and  `setup.py` _but no other `.py` files_, and finally cast `pip install -e .`, which adds this directory to the active conda environment.
+4. (_install quality-of-life to the active env_) Now, `pip install git+https://github.com/ThomasLastName/quality-of-life.git` should suffice.
 
-5. (_install this code_) Navigate to wherever you want (e.g., the Documents folder), and clone this repo there.
+5. (_install pyreadr_) `pip install pyreadr` because I honestly don't know what the correct anaconda channel is... If for some reason this doesn't work, you just won't be able to access the SLOSH data, but the majority of the codebase which doesn't use the SLOSH data should in theory still function correctly.
+
+6. (_install this code_) Navigate to wherever you want (e.g., the Documents folder), and clone this repo there.
+
+7. (_verify installation_) Try running one of the python files, e.g., `python SSGE_multivar_demo.py`, which should create a .gif of some histograms.
 
 
 ## Dependencies
@@ -56,9 +60,10 @@ I believe, the complete list of required dependencies, excluding the standard li
 - [ ] matplotlib
 - [ ] tqdm
 - [ ] numpy
+- [ ] scipy
 - [ ] plotly
 - [ ] pyreadr
-- [ ] https://github.com/ThomasLastName/quality_of_life (this repo has its own dependencies, but I believe it is sufficient to run this repo with only the above packages installed; I believe "the required parts" of this repo depend only on the same 5 packages as above and the standard python library).
+- [ ] https://github.com/ThomasLastName/quality-of-life (this repo has its own dependencies, but I believe it is sufficient to run this repo with only the above packages installed; I believe "the required parts" of this repo depend only on the same 5 packages as above and the standard python library).
 
 If desired, the dependencies on `plotly` and `quality_of_life` could be removed.
 
