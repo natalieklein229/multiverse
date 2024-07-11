@@ -37,7 +37,7 @@ I believe, the complete list of required dependencies, excluding the standard li
 
 2. (_activate the env_) `conda activate BNNs`
 
-3. (_install packages to the active env_) `conda install ___` for each of the required packages listed under **Dependencies**, where you replace `___` by the name of the python package.
+3. (_install packages to the active env_) `conda install ___` for each of the required packages listed under **Dependencies**, where you replace `___` by the name of the python package. For `pyreadr`, either use `pip` instead of `conda`, or set the necessary `conda` channel.
 
 4. (_install quality_of_life to the active env_) Navigate into your Documents folder, create a folder with `mkdir quality_of_life`, cd into the directory you just created with `cd ./quality_of_life`, from there `git clone https://github.com/ThomasLastName/quality_of_life.git`, then copy the setup.py file to the necessary location with `cp ./quality_of_life/setup.py ./setup.py`, confirm that `ls` returns only `quality_of_life` and  `setup.py` _but no other `.py` files_, and finally cast `pip install -e .`, which adds this directory to the active conda environment.
 
@@ -57,6 +57,7 @@ I believe, the complete list of required dependencies, excluding the standard li
 - [ ] tqdm
 - [ ] numpy
 - [ ] plotly
+- [ ] pyreadr
 - [ ] https://github.com/ThomasLastName/quality_of_life (this repo has its own dependencies, but I believe it is sufficient to run this repo with only the above packages installed; I believe "the required parts" of this repo depend only on the same 5 packages as above and the standard python library).
 
 If desired, the dependencies on `plotly` and `quality_of_life` could be removed.
