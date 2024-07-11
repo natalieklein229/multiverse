@@ -12,7 +12,7 @@ else:
 
 #
 # ~~~ Extract the data as numpy arrays
-DATA = pyreadr.read_r(path)     # ~~~ from https://stackoverflow.com/a/61699417
+DATA = pyreadr.read_r(PATH)     # ~~~ from https://stackoverflow.com/a/61699417
 coords_np  =  DATA["coords"].to_numpy()
 inputs_np  =  DATA["inputs"].to_numpy()
 out_np     =     DATA["out"].to_numpy()
