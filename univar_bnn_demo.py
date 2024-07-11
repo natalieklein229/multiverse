@@ -73,6 +73,7 @@ how_often = 10          # ~~~ how many snap shots in total should be taken throu
 initial_frame_repetitions = 24  # ~~~ for how many frames should the state of initialization be rendered
 final_frame_repetitions = 48    # ~~~ for how many frames should the state after training be rendered
 plot_indivitual_NNs = False     # ~~~ if True, do *not* plot confidence intervals and, instead, plot only a few sampled nets
+extra_std = False               # ~~~ if True, add the conditional std. when plotting the +/- 2 standard deviation bars
 
 
 
@@ -130,9 +131,13 @@ grid = x_test.cpu()                     # ~~~ move to cpu in order to plot it
 ground_truth = y_test.squeeze().cpu()   # ~~~ move to cpu in order to plot it
 ylim = buffer( ground_truth.tolist(), multiplier=0.2 )  # ~~~ infer a good ylim
 description_of_the_experiment = "Functional BNN Training" if functional else "Weight Space BNN Training (BBB)"
-def populate_figure( fig, ax , point_estimate=None, std=None, title=None ):
+def populate_figure( fig, ax , point_estimate=None, std=None, title=None, extra_std=0. ):
     with torch.no_grad():
-        point_estimate, std = BNN.posterior_predicted_mean_and_std( x_test, n_posterior_samples ) if (point_estimate is None and std is None) else (point_estimate,std)
+        point_estimate, std = BNN.posterior_predicted_mean_and_std( x_test, n_posterior_samples ) if (point_estimate is None and std is None) else (point_estimate,std) # on cpu
+        try:
+            std += extra_std
+        except: # ~~~ if extra_std is on cuda
+            std += extra_std.cpu()
     green_curve, = ax.plot( grid, ground_truth, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
     blue_curve, = ax.plot( grid, point_estimate, label="Predicted Posterior Mean", linestyle="-", linewidth=.5, color="blue" )
     _ = ax.scatter( x_train.cpu(), y_train.cpu(), color="green" )
@@ -143,6 +148,7 @@ def populate_figure( fig, ax , point_estimate=None, std=None, title=None ):
     _ = ax.set_title( description_of_the_experiment if title is None else title )
     _ = fig.tight_layout()
     return fig, ax
+
 
 
 
@@ -157,7 +163,7 @@ if make_gif:
     gif = GifMaker()
 
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
-    for e in trange( int(n_epochs), ascii=' >=', desc="Deterministic Training" ):
+    for e in trange( n_epochs, ascii=' >=', desc="Deterministic Training" ):
         #
         # ~~~ The actual training logic (totally conventional, hopefully familiar)
         for X, y in dataloader:
@@ -186,34 +192,33 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
 
 
 
-### ~~~
-## ~~~ Run GPR, for reference
-### ~~~
+# ### ~~~
+# ## ~~~ Run GPR, for reference
+# ### ~~~
 
-#
-# ~~~ Borrow from SSGE the implementation of the sub-routines responsible for building the kernel matrix and estimating a good kernel bandwidth
-kernel_matrix = SSGE_backend().gram_matrix
-bandwidth_estimator = SSGE_backend().heuristic_sigma
+# #
+# # ~~~ Borrow from SSGE, the implementation of the sub-routines responsible for building the kernel matrix and estimating a good kernel bandwidth
+# kernel_matrix = SSGE_backend().gram_matrix
+# bandwidth_estimator = SSGE_backend().heuristic_sigma
 
+# #
+# # ~~~ Do GPR
+# bw = 0.1 #bandwidth_estimator( x_test.unsqueeze(-1), x_train.unsqueeze(-1) )
+# K_in    =   kernel_matrix( x_train.unsqueeze(-1), x_train.unsqueeze(-1), bw )
+# K_out   =   kernel_matrix( x_test.unsqueeze(-1),  x_test.unsqueeze(-1),  bw )
+# K_btwn  =   kernel_matrix( x_test.unsqueeze(-1),  x_train.unsqueeze(-1), bw )
+# with torch.no_grad():
+#     sigma2 = ((NN(x_train)-y_train)**2).mean() if conditional_std=="auto" else torch.tensor(conditional_std)**2
 
-#
-# ~~~ Do GPR
-bw = 0.1 #bandwidth_estimator( x_test.unsqueeze(-1), x_train.unsqueeze(-1) )
-K_in    =  kernel_matrix( x_train.unsqueeze(-1), x_train.unsqueeze(-1), bw )
-K_out   =  kernel_matrix( x_test.unsqueeze(-1),  x_test.unsqueeze(-1),  bw )
-K_btwn  =  kernel_matrix( x_test.unsqueeze(-1),  x_train.unsqueeze(-1), bw )
-with torch.no_grad():
-    sigma_squared = ((NN(x_train)-y_train)**2).mean() if conditional_std=="auto" else torch.tensor(conditional_std)**2
+# K_inv = torch.linalg.inv( K_in + sigma2*torch.eye(n_train,device=DEVICE) )
+# posterior_mean  =  (K_btwn@K_inv@y_train).squeeze()
+# posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt()
 
-K_inv = torch.linalg.inv( K_in + sigma_squared*torch.eye(n_train,device=DEVICE) )
-posterior_mean  =  (K_btwn@K_inv@y_train).squeeze()
-posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt()
-
-#
-# ~~~ Plot the result
-fig,ax = plt.subplots(figsize=(12,6))
-fig,ax = populate_figure( fig, ax, point_estimate=posterior_mean.cpu(), std=posterior_std.cpu(), title="Gaussian Process Regression" )
-plt.show()
+# #
+# # ~~~ Plot the result
+# fig,ax = plt.subplots(figsize=(12,6))
+# fig,ax = populate_figure( fig, ax, point_estimate=posterior_mean.cpu(), std=posterior_std.cpu(), title="Gaussian Process Regression" )
+# plt.show()
 
 
 
@@ -232,14 +237,12 @@ std_optimizer  =  Optimizer( BNN.model_std.parameters(), lr=lr )
 with torch.no_grad():
     BNN.conditional_std = torch.sqrt(((NN(x_train)-y_train)**2).mean()) if conditional_std=="auto" else torch.tensor(conditional_std)
 
-
-
 #
 # ~~~ Plot the state of the posterior predictive distribution upon its initialization
 if make_gif:
     gif = GifMaker()      # ~~~ essentially just a list of images
     fig,ax = plt.subplots(figsize=(12,6))
-    fig,ax = populate_figure(fig,ax)    # ~~~ plot the current state of the model
+    fig,ax = populate_figure( fig, ax, extra_std=BNN.conditional_std if extra_std else 0. )    # ~~~ plot the current state of the model
     for j in range(initial_frame_repetitions):
         gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
@@ -276,16 +279,36 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
                 #
                 # ~~~ Compute the gradient of the loss function
                 if functional:
-                    log_posterior_density, log_prior_density = BNN.functional_kl(resample_measurement_set=False)
+                    #
+                    # ~~~ First produce the IID samples needed for the SSGE (and shape them in the form that our implementation of SSGE expects)
+                    with torch.no_grad():
+                        posterior_samples   =   torch.column_stack([ BNN(x_train) for _ in range(M) ]).T
+                        prior_samples       =   torch.column_stack([ BNN.prior_forward(x_train) for _ in range(M) ]).T
+                    #
+                    # ~~~ Sample from the posterior distribution 
+                    yhat = BNN(x_train)
+                    #
+                    # ~~~ Use SSGE to compute "the intractible parts of the gradient"
+                    with torch.no_grad():
+                        posterior_score_at_yhat =   SSGE( posterior_samples, eta=eta, J=J )( yhat.reshape(1,-1) )
+                        prior_score_at_yhat     =   SSGE(   prior_samples,   eta=eta, J=J )( yhat.reshape(1,-1) )
+                    #
+                    # ~~~ Finally, compute the gradients of each of the three terms
+                    log_posterior_density   =   ( posterior_score_at_yhat @ yhat).squeeze()  # ~~~ the inner product from the chain rule
+                    log_prior_density       =   (prior_score_at_yhat @ yhat).squeeze()      # ~~~ the inner product from the chain rule
+                    # log_posterior_density, log_prior_density = BNN.functional_kl(resample=False)
+                    log_likelihood_density = log_gaussian_pdf( where=y_train, mu=BNN(x_train,resample=False), sigma=BNN.conditional_std )
+                    #
+                    # ~~~ Add them up and differentiate
+                    negative_ELBO = ( log_posterior_density - log_prior_density - log_likelihood_density )/n_MC_samples
+                    negative_ELBO.backward()
                 else:
                     BNN.sample_from_standard_normal()   # ~~~ draw a new Monte-Carlo sample for estimating the integrals as an MC average
                     log_posterior_density   =   BNN.log_posterior_density()
                     log_prior_density       =   BNN.log_prior_density()
-            #
-            # ~~~ Add the the likelihood term and differentiate
-            log_likelihood_density = BNN.log_likelihood_density(X,y)
-            negative_ELBO = ( log_posterior_density - log_prior_density - log_likelihood_density )/n_MC_samples
-            negative_ELBO.backward()
+                    log_likelihood_density  =   BNN.log_likelihood_density(X,y)
+                    negative_ELBO = ( log_posterior_density - log_prior_density - log_likelihood_density )/n_MC_samples
+                    negative_ELBO.backward()
             #
             # ~~~ This would be training based only on the data:
             # loss = -BNN.log_likelihood_density(X,y)
@@ -316,39 +339,32 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
         #
         # ~~~ Plotting logic
         if make_gif and n_posterior_samples>0 and (e+1)%how_often==0:
-            fig,ax = populate_figure(fig,ax)
+            fig,ax = populate_figure( fig, ax, extra_std=BNN.conditional_std if extra_std else 0. )
             gif.capture()
             # print("captured")
 
-
-
-### ~~~
-## ~~~ Plot the state of the posterior predictive distribution at the end of training
-### ~~~
-
-if not make_gif:    # ~~~ make a plot now
-    fig,ax = plt.subplots(figsize=(12,6))
-
-fig,ax = populate_figure(fig,ax)
-
+#
+# ~~~ Plot the state of the posterior predictive distribution at the end of training
 if make_gif:
     for j in range(final_frame_repetitions):
-        gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
-    gif.develop( destination=description_of_the_experiment, fps=24 )
+        gif.frames.append( gif.frames[-1] )
+    gif.develop( destination=os.path.join("scaled_by_12",("fBNN" if functional else "BBB")+f" Cv={BNN.conditional_std*scale}, e={n_epochs}, lr={lr}"), fps=24 )
+    plt.close()
 else:
+    fig,ax = plt.subplots(figsize=(12,6))
+    fig,ax = populate_figure( fig, ax, extra_std=BNN.conditional_std if extra_std else 0. )
     plt.show()
 
+pbar.close()
 
 
-### ~~~
-## ~~~ Diagnostics
-### ~~~
 
-def plot( metric, window_size=n_epochs/50 ):
-    plt.plot( moving_average(history[metric],int(window_size)) )
-    plt.grid()
-    plt.tight_layout()
-    plt.show()
+# fig, (ax_gpr,ax_bbb) = plt.subplots(1,2,figsize=(12,6))
+# posterior_mean  =  (K_btwn@K_inv@y_train).squeeze()
+# posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt()
+# fig,ax_gpr = populate_figure( fig, ax_gpr, point_estimate=posterior_mean.cpu(), std=posterior_std.cpu(), title="Gaussian Process Regression" )
+# fig,ax_bbb = populate_figure( fig, ax_bbb )
+# plt.show()
 
 
 
@@ -358,11 +374,14 @@ def plot( metric, window_size=n_epochs/50 ):
 
 #
 # ~~~ Instantiate an ensemble
+with torch.no_grad():
+    conditional_std = torch.sqrt(((NN(x_train)-y_train)**2).mean()) if conditional_std=="auto" else torch.tensor(conditional_std)
+
 ensemble = Ensemble(
         architecture = nonredundant_copy_of_module_list(NN),
         n_copies = n_Stein_particles,
         Optimizer = lambda params: Optimizer( params, lr=lr ),
-        conditional_std = torch.tensor(conditional_std)
+        conditional_std = conditional_std
     )
 
 #
@@ -372,7 +391,7 @@ dataloader = torch.utils.data.DataLoader( convert_Tensors_to_Dataset(x_train,y_t
 #
 # ~~~
 description_of_the_experiment = "Stein Neural Network Ensemble"
-if plot_indivitual_NNs:
+if PLOT_INDIVIDUAL_NNs:
     def ensemble_figure( fig, ax , point_estimate=None, std=None, title=None, how_many=18 ):
         with torch.no_grad():
             preds = ensemble(x_test)
@@ -388,17 +407,17 @@ if plot_indivitual_NNs:
         _ = fig.tight_layout()
         return fig, ax
 else:
-    def ensemble_figure(fig,ax):
+    def ensemble_figure( fig, ax, extra_std=ensemble.conditional_std if extra_std else 0. ):
         with torch.no_grad():
             preds = ensemble(x_test)
-            return populate_figure( fig, ax, point_estimate=preds.mean(dim=-1).cpu(), std=preds.std(dim=-1).cpu(), title="Stein Neural Network Ensemble" )
+            return populate_figure( fig, ax, point_estimate=preds.mean(dim=-1).cpu(), std=preds.std(dim=-1).cpu(), title="Stein Neural Network Ensemble", extra_std=extra_std )
 
 #
 # ~~~ Plot the state of the posterior predictive distribution upon its initialization
 if make_gif:
     gif = GifMaker()      # ~~~ essentially just a list of images
     fig,ax = plt.subplots(figsize=(12,6))
-    fig,ax = ensemble_figure(fig,ax)
+    fig,ax = ensemble_figure( fig, ax, extra_std=ensemble.conditional_std if extra_std else 0. )
     for j in range(initial_frame_repetitions):
         gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
@@ -418,7 +437,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
         #
         # ~~~ Plotting logic
         if make_gif and n_posterior_samples>0 and (e+1)%how_often==0:
-            fig,ax = ensemble_figure(fig,ax)
+            fig,ax = ensemble_figure( fig, ax, extra_std=ensemble.conditional_std if extra_std else 0. )
             gif.capture()
             # print("captured")
 
@@ -427,13 +446,25 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
 if not make_gif:    # ~~~ make a plot now
     fig,ax = plt.subplots(figsize=(12,6))
 
-fig,ax = ensemble_figure(fig,ax)
+fig,ax = ensemble_figure( fig, ax, extra_std=ensemble.conditional_std if extra_std else 0. )
 
 if make_gif:
     for j in range(final_frame_repetitions):
         gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
-    gif.develop( destination="Stein Ensemble", fps=24 )
+    gif.develop( destination=os.path.join("scaled_by_12",f"Stein Ensemble, Cv={ensemble.conditional_std*scale}, bw={ensemble.bw}, e={n_Stein_iterations}, lr={lr}"), fps=24 )
 else:
+    plt.show()
+
+
+
+### ~~~
+## ~~~ Diagnostics
+### ~~~
+
+def plot( metric, window_size=n_epochs/50 ):
+    plt.plot( moving_average(history[metric],int(window_size)) )
+    plt.grid()
+    plt.tight_layout()
     plt.show()
 
 #
