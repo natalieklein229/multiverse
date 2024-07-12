@@ -4,8 +4,8 @@ import torch
 from torch import nn
 from torch.nn.init import _calculate_fan_in_and_fan_out, calculate_gain # ~~~ used (optionally) to define the prior distribution on network weights
 
-from SSGE import BaseScoreEstimator as SSGE_backend
-from SequentialGaussianBNN import log_gaussian_pdf
+from bnns.SSGE import BaseScoreEstimator as SSGE_backend
+from bnns.SequentialGaussianBNN import log_gaussian_pdf
 
 from quality_of_life.my_torch_utils import get_flat_grads, set_flat_grads, nonredundant_copy_of_module_list
 
