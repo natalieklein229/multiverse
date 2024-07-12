@@ -43,7 +43,7 @@ I believe, the complete list of required dependencies, excluding the standard li
 
 5. (_install pyreadr_) `pip install pyreadr` because I honestly don't know what the correct anaconda channel is... If for some reason this doesn't work, you just won't be able to access the SLOSH data, but the majority of the codebase which doesn't use the SLOSH data should in theory still function correctly.
 
-6. (_install this code_) Navigate to wherever you want (e.g., the Documents folder), and clone this repo there.
+6. (_install this code_) Navigate to wherever you want (e.g., the Documents folder), and clone this repo there. Then (mimicing [the SEPIA installation guidelines](https://sepia-lanl.readthedocs.io/en/latest/#installation)), "from the command line, while in the [the root depository of this] directory, use the following command to install [bnns]:" `pip install -e .` "The -e flag signals developer mode, meaning that if you update the code from Github, your installation will automatically take those changes into account without requiring re-installation."
 
 7. (_verify installation_) Try running one of the python files, e.g., `python SSGE_multivar_demo.py`, which should create a .gif of some histograms.
 
