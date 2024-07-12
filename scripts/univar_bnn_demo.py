@@ -12,8 +12,13 @@ from matplotlib import pyplot as plt
 
 #
 # ~~~ The guts of the model
+<<<<<<< HEAD
 from SequentialGaussianBNN import SequentialGaussianBNN, log_gaussian_pdf
 from SSGE import SpectralSteinEstimator as SSGE
+=======
+from SequentialGaussianBNN import SequentialGaussianBNN
+from SSGE import BaseScoreEstimator as SSGE_backend
+>>>>>>> dd06771 (Moved model architecture out of univar_bnn_demo)
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
@@ -81,23 +86,8 @@ extra_std = False               # ~~~ if True, add the conditional std. when plo
 ## ~~~ Define the network architecture
 ### ~~~
 
-BNN = SequentialGaussianBNN(
-        nn.Unflatten( dim=-1, unflattened_size=(-1,1) ),    # ~~~ in order to accept inputs x of the form x=torch.linspace(-1,1,100)
-        nn.Linear(1, 100),
-        nn.ReLU(),
-        nn.Linear(100, 100),
-        nn.ReLU(),
-        nn.Linear(100, 1)
-    ).to(DEVICE)
-
-NN = nn.Sequential(
-        nn.Unflatten( dim=-1, unflattened_size=(-1,1) ),    # ~~~ in order to accept inputs x of the form x=torch.linspace(-1,1,100)
-        nn.Linear(1, 100),
-        nn.ReLU(),
-        nn.Linear(100, 100),
-        nn.ReLU(),
-        nn.Linear(100, 1)
-    ).to(DEVICE)
+from models.univar_BNN_untrained import BNN
+from models.univar_NN_untrained  import  NN
 
 
 
