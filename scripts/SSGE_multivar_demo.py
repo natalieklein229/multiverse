@@ -1,6 +1,6 @@
 
 import torch
-from SSGE import SpectralSteinEstimator
+from bnns.SSGE import SpectralSteinEstimator
 from matplotlib import pyplot as plt
 import math
 import numpy as np
