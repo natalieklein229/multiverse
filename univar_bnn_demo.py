@@ -267,6 +267,7 @@ if project:
 # ~~~ Define the measurement set for functional training
 BNN.measurement_set = x_train
 
+
 # torch.autograd.set_detect_anomaly(True)
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
     pbar = tqdm( desc=description_of_the_experiment, total=n_epochs*len(dataloader), ascii=' >=' )
@@ -279,36 +280,16 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
                 #
                 # ~~~ Compute the gradient of the loss function
                 if functional:
-                    #
-                    # ~~~ First produce the IID samples needed for the SSGE (and shape them in the form that our implementation of SSGE expects)
-                    with torch.no_grad():
-                        posterior_samples   =   torch.column_stack([ BNN(x_train) for _ in range(M) ]).T
-                        prior_samples       =   torch.column_stack([ BNN.prior_forward(x_train) for _ in range(M) ]).T
-                    #
-                    # ~~~ Sample from the posterior distribution 
-                    yhat = BNN(x_train)
-                    #
-                    # ~~~ Use SSGE to compute "the intractible parts of the gradient"
-                    with torch.no_grad():
-                        posterior_score_at_yhat =   SSGE( posterior_samples, eta=eta, J=J )( yhat.reshape(1,-1) )
-                        prior_score_at_yhat     =   SSGE(   prior_samples,   eta=eta, J=J )( yhat.reshape(1,-1) )
-                    #
-                    # ~~~ Finally, compute the gradients of each of the three terms
-                    log_posterior_density   =   ( posterior_score_at_yhat @ yhat).squeeze()  # ~~~ the inner product from the chain rule
-                    log_prior_density       =   (prior_score_at_yhat @ yhat).squeeze()      # ~~~ the inner product from the chain rule
-                    # log_posterior_density, log_prior_density = BNN.functional_kl(resample=False)
-                    log_likelihood_density = log_gaussian_pdf( where=y_train, mu=BNN(x_train,resample=False), sigma=BNN.conditional_std )
-                    #
-                    # ~~~ Add them up and differentiate
-                    negative_ELBO = ( log_posterior_density - log_prior_density - log_likelihood_density )/n_MC_samples
-                    negative_ELBO.backward()
+                    log_posterior_density, log_prior_density = BNN.functional_kl(resample_measurement_set=False)
                 else:
                     BNN.sample_from_standard_normal()   # ~~~ draw a new Monte-Carlo sample for estimating the integrals as an MC average
                     log_posterior_density   =   BNN.log_posterior_density()
                     log_prior_density       =   BNN.log_prior_density()
-                    log_likelihood_density  =   BNN.log_likelihood_density(X,y)
-                    negative_ELBO = ( log_posterior_density - log_prior_density - log_likelihood_density )/n_MC_samples
-                    negative_ELBO.backward()
+            #
+            # ~~~ Add the the likelihood term and differentiate
+            log_likelihood_density = BNN.log_likelihood_density(X,y)
+            negative_ELBO = ( log_posterior_density - log_prior_density - log_likelihood_density )/n_MC_samples
+            negative_ELBO.backward()
             #
             # ~~~ This would be training based only on the data:
             # loss = -BNN.log_likelihood_density(X,y)
@@ -339,7 +320,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
         #
         # ~~~ Plotting logic
         if make_gif and n_posterior_samples>0 and (e+1)%how_often==0:
-            fig,ax = populate_figure( fig, ax, extra_std=BNN.conditional_std if extra_std else 0. )
+            fig,ax = populate_figure(fig,ax)
             gif.capture()
             # print("captured")
 
