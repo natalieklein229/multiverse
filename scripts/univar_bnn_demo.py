@@ -12,13 +12,9 @@ from matplotlib import pyplot as plt
 
 #
 # ~~~ The guts of the model
-<<<<<<< HEAD
-from SequentialGaussianBNN import SequentialGaussianBNN, log_gaussian_pdf
-from SSGE import SpectralSteinEstimator as SSGE
-=======
-from SequentialGaussianBNN import SequentialGaussianBNN
-from SSGE import BaseScoreEstimator as SSGE_backend
->>>>>>> dd06771 (Moved model architecture out of univar_bnn_demo)
+
+from bnns.SequentialGaussianBNN import SequentialGaussianBNN
+from bnns.SSGE import BaseScoreEstimator as SSGE_backend
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
