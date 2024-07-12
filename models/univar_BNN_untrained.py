@@ -1,4 +1,5 @@
 
+import torch
 from torch import nn
 from bnns.SequentialGaussianBNN import SequentialGaussianBNN
 torch.manual_seed(2024)
