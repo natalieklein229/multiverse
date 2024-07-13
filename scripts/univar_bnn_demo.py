@@ -89,34 +89,6 @@ x_train, y_train, x_test, y_test = x_train.to(DEVICE), y_train.to(DEVICE), x_tes
 
 
 
-### ~~~
-## ~~~ Some objects and helper functions for making plots
-### ~~~
-
-grid = x_test.cpu()                     # ~~~ move to cpu in order to plot it
-ground_truth = y_test.squeeze().cpu()   # ~~~ move to cpu in order to plot it
-ylim = buffer( ground_truth.tolist(), multiplier=0.2 )  # ~~~ infer a good ylim
-description_of_the_experiment = "Functional BNN Training" if functional else "Weight Space BNN Training (BBB)"
-def populate_figure( fig, ax , point_estimate=None, std=None, title=None, extra_std=0. ):
-    with torch.no_grad():
-        point_estimate, std = BNN.posterior_predicted_mean_and_std( x_test, n_posterior_samples ) if (point_estimate is None and std is None) else (point_estimate,std) # on cpu
-        try:
-            std += extra_std
-        except: # ~~~ if extra_std is on cuda
-            std += extra_std.cpu()
-    green_curve, = ax.plot( grid, ground_truth, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
-    blue_curve, = ax.plot( grid, point_estimate, label="Predicted Posterior Mean", linestyle="-", linewidth=.5, color="blue" )
-    _ = ax.scatter( x_train.cpu(), y_train.cpu(), color="green" )
-    _ = ax.fill_between( grid, point_estimate-2*std, point_estimate+2*std, facecolor="blue", interpolate=True, alpha=0.3, label="95% Confidence Interval")
-    _ = ax.set_ylim(ylim)
-    _ = ax.legend()
-    _ = ax.grid()
-    _ = ax.set_title( description_of_the_experiment if title is None else title )
-    _ = fig.tight_layout()
-    return fig, ax
-
-
-
 
 ### ~~~
 ## ~~~ Train a conventional neural network, for reference
@@ -155,6 +127,34 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
     # ~~~ Afterwards, develop the .gif if applicable
     if make_gif:
         gif.develop( destination="NN", fps=24 )
+
+
+
+### ~~~
+## ~~~ Some objects and helper functions for making plots
+### ~~~
+
+grid = x_test.cpu()                     # ~~~ move to cpu in order to plot it
+ground_truth = y_test.squeeze().cpu()   # ~~~ move to cpu in order to plot it
+ylim = buffer( ground_truth.tolist(), multiplier=0.2 )  # ~~~ infer a good ylim
+description_of_the_experiment = "Functional BNN Training" if functional else "Weight Space BNN Training (BBB)"
+def populate_figure( fig, ax , point_estimate=None, std=None, title=None, extra_std=0. ):
+    with torch.no_grad():
+        point_estimate, std = BNN.posterior_predicted_mean_and_std( x_test, n_posterior_samples ) if (point_estimate is None and std is None) else (point_estimate,std) # on cpu
+        try:
+            std += extra_std
+        except: # ~~~ if extra_std is on cuda
+            std += extra_std.cpu()
+    green_curve, = ax.plot( grid, ground_truth, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
+    blue_curve, = ax.plot( grid, point_estimate, label="Predicted Posterior Mean", linestyle="-", linewidth=.5, color="blue" )
+    _ = ax.scatter( x_train.cpu(), y_train.cpu(), color="green" )
+    _ = ax.fill_between( grid, point_estimate-2*std, point_estimate+2*std, facecolor="blue", interpolate=True, alpha=0.3, label="95% Confidence Interval")
+    _ = ax.set_ylim(ylim)
+    _ = ax.legend()
+    _ = ax.grid()
+    _ = ax.set_title( description_of_the_experiment if title is None else title )
+    _ = fig.tight_layout()
+    return fig, ax
 
 
 
