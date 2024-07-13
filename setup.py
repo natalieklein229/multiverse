@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'bnns',
-    version = '0.2.5',
+    version = '0.3.0',
     author = 'Thomas Winckelman',
     author_email = 'winckelman@tamu.edu',
     description = 'Package intended for testing (but not optimized for deploying) varions BNN algorithms',

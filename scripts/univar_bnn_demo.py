@@ -35,13 +35,6 @@ DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
 torch.manual_seed(2024)
 torch.set_default_dtype(torch.float)    # ~~~ note: why doesn't torch.double work?
 
-#
-# ~~~ Regarding the data
-n_train = 50
-noise = 0.2  # ~~~ pollute y_train wth Gaussian noise of variance noise**2
-n_test = 500
-f = lambda x: 2*torch.cos(2*torch.pi*x)
-f = lambda x: 2*torch.cos(torch.pi*(x+0.2)) + torch.exp(2.5*(x+0.2))/2.5   # ~~~ the ground truth
 
 #
 # ~~~ Regarding the training method
@@ -84,28 +77,14 @@ extra_std = False               # ~~~ if True, add the conditional std. when plo
 
 from models.univar_BNN_untrained import BNN
 from models.univar_NN_untrained  import  NN
-
-
+NN, BNN = NN.to(DEVICE), BNN.to(DEVICE)
 
 ### ~~~
-## ~~~ Make up some data
+## ~~~ Define the data
 ### ~~~
 
-#
-# ~~~ Synthetic (noisy) training data
-x_train = 2*torch.rand( size=(n_train,), device=DEVICE )**2 - 1                # ~~~ uniformly random points in [-1,1]
-x_train = x_train.sign() * x_train.abs()**(1/6)
-y_train = f(x_train) + noise*torch.randn( size=(n_train,), device=DEVICE )
-
-#
-# ~~~ Synthetic (noise-less) test data
-x_test = torch.linspace( -1.2, 1.2, n_test, device=DEVICE )
-y_test = f(x_test)
-
-#
-# ~~~ Reshape y data in order to be consistent with the shape returned by a model with final layer nn.Linear(m,1)
-y_train = y_train.reshape(-1,1)    
-y_test  =  y_test.reshape(-1,1)
+from bnns.data.univar_data.missing_middle import x_train, y_train, x_test, y_test
+x_train, y_train, x_test, y_test = x_train.to(DEVICE), y_train.to(DEVICE), x_test.to(DEVICE), y_test.to(DEVICE)
 
 
 
