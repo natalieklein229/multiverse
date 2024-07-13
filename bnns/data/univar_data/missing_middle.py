@@ -19,3 +19,9 @@ y_train = f(x_train) + noise*torch.randn( size=(n_train,) )
 # ~~~ Synthetic (noise-less) test data
 x_test = torch.linspace( -1.5, 1.5, n_test )
 y_test = f(x_test)
+
+#
+# ~~~ Reshape y data in order to be consistent with the shape returned by a model with final layer nn.Linear(m,1)
+y_train = y_train.reshape(-1,1)    
+y_test  =  y_test.reshape(-1,1)
+
