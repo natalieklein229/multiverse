@@ -35,12 +35,11 @@ DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
 torch.manual_seed(2024)
 torch.set_default_dtype(torch.float)    # ~~~ note: why doesn't torch.double work?
 
-
 #
 # ~~~ Regarding the training method
 functional = True
 Optimizer = torch.optim.Adam
-batch_size = n_train
+batch_size = 64
 lr = 0.0005
 n_epochs = 2000
 n_posterior_samples = 100   # ~~~ posterior distributions are approximated as empirical dist.'s of this many samples
@@ -175,7 +174,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
 # with torch.no_grad():
 #     sigma2 = ((NN(x_train)-y_train)**2).mean() if conditional_std=="auto" else torch.tensor(conditional_std)**2
 
-# K_inv = torch.linalg.inv( K_in + sigma2*torch.eye(n_train,device=DEVICE) )
+# K_inv = torch.linalg.inv( K_in + sigma2*torch.eye(len(x_train),device=DEVICE) )
 # posterior_mean  =  (K_btwn@K_inv@y_train).squeeze()
 # posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt()
 
