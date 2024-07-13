@@ -78,11 +78,13 @@ from models.univar_BNN_untrained import BNN
 from models.univar_NN_untrained  import  NN
 NN, BNN = NN.to(DEVICE), BNN.to(DEVICE)
 
+
+
 ### ~~~
 ## ~~~ Define the data
 ### ~~~
 
-from bnns.data.univar_data.missing_middle import x_train, y_train, x_test, y_test
+from bnns.data.univar_data.missing_middle import x_train, y_train, x_test, y_test, ground_truth
 x_train, y_train, x_test, y_test = x_train.to(DEVICE), y_train.to(DEVICE), x_test.to(DEVICE), y_test.to(DEVICE)
 
 
@@ -142,7 +144,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
             fig, ax = points_with_curves(   # ~~~ this function simply just makes a plot
                     x       =     x_train,
                     y       =     y_train,
-                    curves  =     (NN,f),
+                    curves  =     (NN,ground_truth),
                     show    =     False,
                     title   =     r"Conventional Training",
                     fig     =     (fig if "fig" in globals() else "new"),

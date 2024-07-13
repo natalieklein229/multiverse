@@ -25,3 +25,6 @@ y_test = f(x_test)
 y_train = y_train.reshape(-1,1)    
 y_test  =  y_test.reshape(-1,1)
 
+#
+# ~~~ Rename the function according to how it will be imported
+ground_truth = f
