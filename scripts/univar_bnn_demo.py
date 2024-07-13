@@ -74,8 +74,8 @@ extra_std = False               # ~~~ if True, add the conditional std. when plo
 ## ~~~ Define the network architecture
 ### ~~~
 
-from models.univar_BNN_untrained import BNN
-from models.univar_NN_untrained  import  NN
+from bnn.models.univar_BNN_untrained import BNN
+from bnn.models.univar_NN_untrained  import  NN
 NN, BNN = NN.to(DEVICE), BNN.to(DEVICE)
 
 
