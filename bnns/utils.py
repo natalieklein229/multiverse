@@ -38,7 +38,7 @@ extra_std = False               # ~~~ if True, add the conditional std. when plo
 
 #
 # ~~~ Somewhat general helper routine for making plots
-def univar_figure( fig, ax, grid, green_curve, x_train, y_train, model, title=None, point_estimate=None, confidence_intervals=None, individual_sampler=None ):
+def univar_figure( fig, ax, grid, green_curve, x_train, y_train, model, title=None, blue_curve=None, **kwargs ):
     with torch.no_grad():
         #
         # ~~~ Green curve and green scatterplot of the data
@@ -46,18 +46,10 @@ def univar_figure( fig, ax, grid, green_curve, x_train, y_train, model, title=No
         _ = ax.scatter( x_train.cpu(), y_train.cpu(),   color="green" )
         #
         # ~~~ Blue curve(s) of the model
-        if individual_sampler is not None:
-            #
-            # ~~~ Plot a sampling of the individual NN's
-            ax = individual_sampler(model,grid,ax)
-        if (point_estimate is not None):
-            #
-            # ~~~ Plot a point estimate
-            ax = point_estimate(model,grid,ax)
-        if (confidence_intervals is not None):
-            #
-            # ~~~ Plot the standard deviation bands
-            ax = confidence_intervals(model,agrid,x)
+        try:
+            ax = blue_curve( model, grid, ax, **kwargs )
+        except:
+            ax = blue_curve( model, grid, ax ) 
         #
         # ~~~ Finish up
         _ = ax.set_ylim(ylim)
@@ -74,8 +66,26 @@ def trivial_sampler(f,grid,ax):
     return ax
 
 #
-# ~~~ Graph a symmetric, empirical 95% confidence interval of a model
-def empirical_quantile( model, grid, ax, n_samples=100 ):
-    predictions = torch.column_stack([ self(grid,resample_weights=True) for _ in range(n_samples) ])
-    median = predictions.median(dim=-1).cpu()
-    
+# ~~~ Graph a symmetric, empirical 95% confidence interval of a model with a median point estimate
+def empirical_quantile( model, grid, ax, n_samples=100, conditional_std=0., alpha=0.2, plot_indivitual_NNs=True, how_many=6, **kwargs ):
+    example_output = model( grid, resample_weights=False )
+    predictions = torch.column_stack([
+            model(grid,resample_weights=True) + conditional_std*torch.randn_like(example_output)
+            for _ in range(n_samples)
+        ])
+    lo,med,hi = predictions.quantile( q=torch.Tensor([0.05,0.5,0.95]), dim=-1 )
+    #
+    # ~~~ Graph the median as a blue curve
+    _, = ax.plot( grid.cpu(), med,.cpu() label="Predicted Posterior Mean", linestyle="-", linewidth=( 0.7 if plot_indivitual_NNs else 0.5 ), color="blue" )
+    #
+    # ~~~ Optionally, also graph several of the actual sample NN's as more blue curves (label only the last one)
+    if plot_indivitual_NNs:
+        which_NNs = (np.linspace( 1, n_posterior_samples, min(n_posterior_samples,how_many), dtype=np.int32 ) - 1).tolist()
+        for j in which_NNs:
+            if j==max(which_NNs):
+                _, = ax.plot( grid.cpu(), predictions[:,j].cpu(), label="A Sampled Network", linestyle="-", linewidth=(1 if plot_indivitual_NNs else 0.5), color="blue", alpha=(alpha+1)/2 )
+            else:
+                _, = ax.plot( grid.cpu(), predictions[:,j].cpu(), linestyle="-", linewidth=(1 if plot_indivitual_NNs else 0.5), color="blue", alpha=(alpha+1)/2 )
+    tittle = "95% Empirical Quantile Interval"
+    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if conditional_std==0) else (tittle+" Including Measurment Noise") )
+    return ax
