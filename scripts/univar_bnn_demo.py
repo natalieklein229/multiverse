@@ -100,6 +100,8 @@ x_train, y_train, x_test, y_test = x_train.to(DEVICE), y_train.to(DEVICE), x_tes
 optimizer = Optimizer( NN.parameters(), lr=lr )
 dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train,y_train), batch_size=batch_size )
 loss_fn = nn.MSELoss()
+
+fig,ax = plt.subplots(figsize=(12,6))
 def plotting_routine(fig,ax):
     return univar_figure( fig, ax, grid, green_curve, model=NN, title="Conventional, Deterministic Training", blue_curve=trivial_sampler )
 
@@ -125,6 +127,9 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
     # ~~~ Afterwards, develop the .gif if applicable
     if make_gif:
         gif.develop( destination="NN", fps=24 )
+    else:
+        fig, ax = plotting_routine(fig,ax)
+        plt.show()
 
 
 
