@@ -45,7 +45,7 @@ functional = True
 Optimizer = torch.optim.Adam
 batch_size = 64
 lr = 0.0005
-n_epochs = 2000
+n_epochs = 200
 n_posterior_samples = 100   # ~~~ posterior distributions are approximated as empirical dist.'s of this many samples
 n_MC_samples = 20           # ~~~ expectations are estimated as an average of this many Monte-Carlo samples
 project = True              # ~~~ if True, use projected gradient descent; else use the weird thing from the paper
@@ -94,6 +94,17 @@ x_train, y_train, x_test, y_test = x_train.to(DEVICE), y_train.to(DEVICE), x_tes
 
 
 ### ~~~
+## ~~~ Define some objects used for plotting
+### ~~~
+
+grid = x_test.cpu()
+green_curve =  y_test.cpu().squeeze()
+x_train_cpu = x_train.cpu()
+y_train_cpu = y_train.cpu().squeeze()
+
+
+
+### ~~~
 ## ~~~ Train a conventional neural network, for reference
 ### ~~~
 
@@ -102,10 +113,6 @@ dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train
 loss_fn = nn.MSELoss()
 
 fig,ax = plt.subplots(figsize=(12,6))
-grid = x_test.cpu()
-green_curve =  y_test.cpu().squeeze()
-x_train_cpu = x_train.cpu()
-y_train_cpu = y_train.cpu().squeeze()
 def plotting_routine(fig,ax):
     return univar_figure( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, model=NN, title="Conventional, Deterministic Training", blue_curve=trivial_sampler )
 
@@ -137,61 +144,36 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
 
 
 
-# ### ~~~
-# ## ~~~ Some objects and helper functions for making plots
-# ### ~~~
+### ~~~
+## ~~~ Run GPR, for reference
+### ~~~
 
-# grid = x_test.cpu()                     # ~~~ move to cpu in order to plot it
-# green_curve = y_test.squeeze().cpu()    # ~~~ move to cpu in order to plot it
-# ylim = buffer( green_curve.tolist(), multiplier=0.2 )   # ~~~ infer a good ylim
-# description_of_the_experiment = "Functional BNN Training" if functional else "Weight Space BNN Training (BBB)"
-# def populate_figure( fig, ax , point_estimate=None, std=None, title=None, extra_std=0. ):
-#     with torch.no_grad():
-#         point_estimate, std = BNN.posterior_predicted_mean_and_std( x_test, n_posterior_samples ) if (point_estimate is None and std is None) else (point_estimate,std) # on cpu
-#         try:
-#             std += extra_std
-#         except: # ~~~ if extra_std is on cuda
-#             std += extra_std.cpu()
-#     green_curve, = ax.plot( grid, green_curve, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
-#     blue_curve, = ax.plot( grid, point_estimate, label="Predicted Posterior Mean", linestyle="-", linewidth=.5, color="blue" )
-#     _ = ax.scatter( x_train.cpu(), y_train.cpu(), color="green" )
-#     _ = ax.fill_between( grid, point_estimate-2*std, point_estimate+2*std, facecolor="blue", interpolate=True, alpha=0.3, label="95% Confidence Interval")
-#     _ = ax.set_ylim(ylim)
-#     _ = ax.legend()
-#     _ = ax.grid()
-#     _ = ax.set_title( description_of_the_experiment if title is None else title )
-#     _ = fig.tight_layout()
-#     return fig, ax
+#
+# ~~~ Borrow from SSGE, the implementation of the sub-routines responsible for building the kernel matrix and estimating a good kernel bandwidth
+kernel_matrix = SSGE_backend().gram_matrix
+bandwidth_estimator = SSGE_backend().heuristic_sigma
 
+#
+# ~~~ Do GPR
+bw = 0.1 #bandwidth_estimator( x_test.unsqueeze(-1), x_train.unsqueeze(-1) )
+K_in    =   kernel_matrix( x_train.unsqueeze(-1), x_train.unsqueeze(-1), bw )
+K_out   =   kernel_matrix( x_test.unsqueeze(-1),  x_test.unsqueeze(-1),  bw )
+K_btwn  =   kernel_matrix( x_test.unsqueeze(-1),  x_train.unsqueeze(-1), bw )
+with torch.no_grad():
+    sigma2 = ((NN(x_train)-y_train)**2).mean() if conditional_std=="auto" else torch.tensor(conditional_std)**2
 
+K_inv = torch.linalg.inv( K_in + sigma2*torch.eye(len(x_train),device=DEVICE) )
+posterior_mean  =  (K_btwn@K_inv@y_train).squeeze()
+posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt() + sigma2
 
-# # ### ~~~
-# # ## ~~~ Run GPR, for reference
-# # ### ~~~
+#
+# ~~~ Plot the result
+fig,ax = plt.subplots(figsize=(12,6))
+def plotting_routine(fig,ax):
+    return univar_figure( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, model=None, title="Conventional, Deterministic Training", blue_curve=lambda model,grid,ax: pre_computed_mean_and_std(model,grid,ax,posterior_mean,posterior_std) )
 
-# # #
-# # # ~~~ Borrow from SSGE, the implementation of the sub-routines responsible for building the kernel matrix and estimating a good kernel bandwidth
-# # kernel_matrix = SSGE_backend().gram_matrix
-# # bandwidth_estimator = SSGE_backend().heuristic_sigma
-
-# # #
-# # # ~~~ Do GPR
-# # bw = 0.1 #bandwidth_estimator( x_test.unsqueeze(-1), x_train.unsqueeze(-1) )
-# # K_in    =   kernel_matrix( x_train.unsqueeze(-1), x_train.unsqueeze(-1), bw )
-# # K_out   =   kernel_matrix( x_test.unsqueeze(-1),  x_test.unsqueeze(-1),  bw )
-# # K_btwn  =   kernel_matrix( x_test.unsqueeze(-1),  x_train.unsqueeze(-1), bw )
-# # with torch.no_grad():
-# #     sigma2 = ((NN(x_train)-y_train)**2).mean() if conditional_std=="auto" else torch.tensor(conditional_std)**2
-
-# # K_inv = torch.linalg.inv( K_in + sigma2*torch.eye(len(x_train),device=DEVICE) )
-# # posterior_mean  =  (K_btwn@K_inv@y_train).squeeze()
-# # posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt()
-
-# # #
-# # # ~~~ Plot the result
-# # fig,ax = plt.subplots(figsize=(12,6))
-# # fig,ax = populate_figure( fig, ax, point_estimate=posterior_mean.cpu(), std=posterior_std.cpu(), title="Gaussian Process Regression" )
-# # plt.show()
+fig,ax = plotting_routine(fig,ax)
+plt.show()
 
 
 

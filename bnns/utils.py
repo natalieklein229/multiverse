@@ -73,6 +73,18 @@ def trivial_sampler(f,grid,ax):
     _, = ax.plot( grid.cpu(), f(grid).cpu(), label="Neural Network", linestyle="-", linewidth=.5, color="blue" )
     return ax
 
+#
+# ~~~ Graph the two standard deviations given pre-computed mean and std
+def pre_computed_mean_and_std( model, grid, ax, mean, std, **kwargs ):
+    #
+    # ~~~ Graph the median as a blue curve
+    _, = ax.plot( grid.cpu(), mean.cpu(), label="Predicted Posterior Mean", linestyle="-", linewidth=( 0.7 if plot_indivitual_NNs else 0.5 ), color="blue" )
+    #
+    # ~~~ Fill in a 95% confidence region
+    tittle = "95% Empirical Quantile Interval"
+    lo, hi = mean-2*std, mean+2*std
+    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if conditional_std==0 else tittle+" Including Measurment Noise") )
+    return ax
 
 #
 # ~~~ Graph the mean +/- two standard deviations
