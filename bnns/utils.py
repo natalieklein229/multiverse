@@ -75,7 +75,7 @@ def trivial_sampler(f,grid,ax):
 
 #
 # ~~~ Graph the two standard deviations given pre-computed mean and std
-def pre_computed_mean_and_std( model, grid, ax, mean, std, **kwargs ):
+def pre_computed_mean_and_std( model, grid, ax, mean, std, alpha=0.2, **kwargs ):
     #
     # ~~~ Graph the median as a blue curve
     _, = ax.plot( grid.cpu(), mean.cpu(), label="Predicted Posterior Mean", linestyle="-", linewidth=( 0.7 if plot_indivitual_NNs else 0.5 ), color="blue" )
