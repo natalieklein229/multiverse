@@ -1,5 +1,12 @@
 
 import torch
+try:
+    from quality_of_life.my_base_utils import buffer
+except:
+    from quality_of_life.my_visualization_utils import buffer   # ~~~ deprecated
+    print("Please update quality_of_life")
+
+
 class TrainingConfig:
     DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -53,7 +60,7 @@ def univar_figure( fig, ax, grid, green_curve, x_train, y_train, model, title=No
             ax = blue_curve( model, grid, ax ) 
         #
         # ~~~ Finish up
-        _ = ax.set_ylim(ylim)
+        _ = ax.set_ylim(buffer( y_train.cpu().tolist(), multiplier=0.35 ))
         _ = ax.legend()
         _ = ax.grid()
         _ = ax.set_title( description_of_the_experiment if title is None else title )
