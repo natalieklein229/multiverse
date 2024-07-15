@@ -93,7 +93,7 @@ def two_standard_deviations( model, grid, ax, n_samples=100, conditional_std=0.,
     #
     # ~~~ Fill in a 95% confidence region
     tittle = "95% Empirical Quantile Interval"
-    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if conditional_std==0) else (tittle+" Including Measurment Noise") )
+    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if conditional_std==0 else tittle+" Including Measurment Noise") )
     return ax
 
 #
@@ -122,5 +122,5 @@ def empirical_quantile( model, grid, ax, n_samples=100, conditional_std=0., alph
     #
     # ~~~ Fill in a 95% confidence region
     tittle = "95% Empirical Quantile Interval"
-    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if conditional_std==0) else (tittle+" Including Measurment Noise") )
+    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if conditional_std==0 else tittle+" Including Measurment Noise") )
     return ax
