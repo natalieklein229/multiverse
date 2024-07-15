@@ -19,7 +19,7 @@ from bnns.SSGE import BaseScoreEstimator as SSGE_backend
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
 from quality_of_life.my_visualization_utils import GifMaker, buffer, points_with_curves
-from quality_of_life.my_torch_utils         import convert_Tensors_to_Dataset, nonredundant_copy_of_module_list
+from quality_of_life.my_torch_utils         import nonredundant_copy_of_module_list
 from quality_of_life.my_numpy_utils         import moving_average
 from quality_of_life.my_base_utils          import support_for_progress_bars
 
@@ -95,7 +95,7 @@ x_train, y_train, x_test, y_test = x_train.to(DEVICE), y_train.to(DEVICE), x_tes
 ### ~~~
 
 optimizer = Optimizer( NN.parameters(), lr=lr )
-dataloader = torch.utils.data.DataLoader( convert_Tensors_to_Dataset(x_train,y_train), batch_size=batch_size )
+dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train,y_train), batch_size=batch_size )
 loss_fn = nn.MSELoss()
 if make_gif:
     gif = GifMaker()
@@ -135,8 +135,8 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
 ### ~~~
 
 grid = x_test.cpu()                     # ~~~ move to cpu in order to plot it
-ground_truth = y_test.squeeze().cpu()   # ~~~ move to cpu in order to plot it
-ylim = buffer( ground_truth.tolist(), multiplier=0.2 )  # ~~~ infer a good ylim
+green_curve = y_test.squeeze().cpu()    # ~~~ move to cpu in order to plot it
+ylim = buffer( green_curve.tolist(), multiplier=0.2 )   # ~~~ infer a good ylim
 description_of_the_experiment = "Functional BNN Training" if functional else "Weight Space BNN Training (BBB)"
 def populate_figure( fig, ax , point_estimate=None, std=None, title=None, extra_std=0. ):
     with torch.no_grad():
@@ -145,7 +145,7 @@ def populate_figure( fig, ax , point_estimate=None, std=None, title=None, extra_
             std += extra_std
         except: # ~~~ if extra_std is on cuda
             std += extra_std.cpu()
-    green_curve, = ax.plot( grid, ground_truth, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
+    green_curve, = ax.plot( grid, green_curve, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
     blue_curve, = ax.plot( grid, point_estimate, label="Predicted Posterior Mean", linestyle="-", linewidth=.5, color="blue" )
     _ = ax.scatter( x_train.cpu(), y_train.cpu(), color="green" )
     _ = ax.fill_between( grid, point_estimate-2*std, point_estimate+2*std, facecolor="blue", interpolate=True, alpha=0.3, label="95% Confidence Interval")
@@ -342,7 +342,7 @@ if PLOT_INDIVIDUAL_NNs:
     def ensemble_figure( fig, ax , point_estimate=None, std=None, title=None, how_many=18 ):
         with torch.no_grad():
             preds = ensemble(x_test)
-        green_curve, = ax.plot( grid, ground_truth, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
+        green_curve, = ax.plot( grid, green_curve, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
         for j in range(how_many):
             j+= 80
             blue_curve, = ax.plot( grid, preds[:,j].cpu(), label=f"Network {j}", linestyle="-", linewidth=.5, color="blue" )

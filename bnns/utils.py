@@ -35,3 +35,47 @@ final_frame_repetitions = 48    # ~~~ for how many frames should the state after
 plot_indivitual_NNs = False     # ~~~ if True, do *not* plot confidence intervals and, instead, plot only a few sampled nets
 extra_std = False               # ~~~ if True, add the conditional std. when plotting the +/- 2 standard deviation bars
 
+
+#
+# ~~~ Somewhat general helper routine for making plots
+def univar_figure( fig, ax, grid, green_curve, x_train, y_train, model, title=None, point_estimate=None, confidence_intervals=None, individual_sampler=None ):
+    with torch.no_grad():
+        #
+        # ~~~ Green curve and green scatterplot of the data
+        _, = ax.plot(    grid.cpu(), green_curve.cpu(), color="green", label="Ground Truth", linestyle='--', linewidth=.5 )
+        _ = ax.scatter( x_train.cpu(), y_train.cpu(),   color="green" )
+        #
+        # ~~~ Blue curve(s) of the model
+        if individual_sampler is not None:
+            #
+            # ~~~ Plot a sampling of the individual NN's
+            ax = individual_sampler(model,grid,ax)
+        if (point_estimate is not None):
+            #
+            # ~~~ Plot a point estimate
+            ax = point_estimate(model,grid,ax)
+        if (confidence_intervals is not None):
+            #
+            # ~~~ Plot the standard deviation bands
+            ax = confidence_intervals(model,agrid,x)
+        #
+        # ~~~ Finish up
+        _ = ax.set_ylim(ylim)
+        _ = ax.legend()
+        _ = ax.grid()
+        _ = ax.set_title( description_of_the_experiment if title is None else title )
+        _ = fig.tight_layout()
+    return fig, ax
+
+#
+# ~~~ Basically just plot a function
+def trivial_sampler(f,grid,ax):
+    _, = ax.plot( grid.cpu(), f(grid).cpu(), label="Neural Network", linestyle="-", linewidth=.5, color="blue" )
+    return ax
+
+#
+# ~~~ Graph a symmetric, empirical 95% confidence interval of a model
+def empirical_quantile( model, grid, ax, n_samples=100 ):
+    predictions = torch.column_stack([ self(grid,resample_weights=True) for _ in range(n_samples) ])
+    median = predictions.median(dim=-1).cpu()
+    
