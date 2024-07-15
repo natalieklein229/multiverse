@@ -18,7 +18,7 @@ from bnns.SSGE import BaseScoreEstimator as SSGE_backend
 
 #
 # ~~~ Package-specific utils
-from bnns.utils import univar_figure, trivial_sampler, two_standard_deviations
+from bnns.utils import univar_figure, trivial_sampler, two_standard_deviations, pre_computed_mean_and_std
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
