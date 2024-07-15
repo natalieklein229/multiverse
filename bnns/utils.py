@@ -65,18 +65,22 @@ def trivial_sampler(f,grid,ax):
     _, = ax.plot( grid.cpu(), f(grid).cpu(), label="Neural Network", linestyle="-", linewidth=.5, color="blue" )
     return ax
 
+
 #
-# ~~~ Graph a symmetric, empirical 95% confidence interval of a model with a median point estimate
-def empirical_quantile( model, grid, ax, n_samples=100, conditional_std=0., alpha=0.2, plot_indivitual_NNs=True, how_many=6, **kwargs ):
-    example_output = model( grid, resample_weights=False )
+# ~~~ Graph the mean +/- two standard deviations
+def two_standard_deviations( model, grid, ax, n_samples=100, conditional_std=0., alpha=0.2, plot_indivitual_NNs=True, how_many=6, **kwargs ):
+    #
+    # ~~~ Draw from the posterior predictive distribution
     predictions = torch.column_stack([
-            model(grid,resample_weights=True) + conditional_std*torch.randn_like(example_output)
+            model(grid,resample_weights=True)
             for _ in range(n_samples)
         ])
-    lo,med,hi = predictions.quantile( q=torch.Tensor([0.05,0.5,0.95]), dim=-1 )
+    mean = predictions.mean(dim=-1)
+    std  =  predictions.std(dim=-1) + conditional_std
+    lo, hi = mean-2*std, mean+2*std
     #
     # ~~~ Graph the median as a blue curve
-    _, = ax.plot( grid.cpu(), med,.cpu() label="Predicted Posterior Mean", linestyle="-", linewidth=( 0.7 if plot_indivitual_NNs else 0.5 ), color="blue" )
+    _, = ax.plot( grid.cpu(), med.cpu() label="Predicted Posterior Mean", linestyle="-", linewidth=( 0.7 if plot_indivitual_NNs else 0.5 ), color="blue" )
     #
     # ~~~ Optionally, also graph several of the actual sample NN's as more blue curves (label only the last one)
     if plot_indivitual_NNs:
@@ -86,6 +90,37 @@ def empirical_quantile( model, grid, ax, n_samples=100, conditional_std=0., alph
                 _, = ax.plot( grid.cpu(), predictions[:,j].cpu(), label="A Sampled Network", linestyle="-", linewidth=(1 if plot_indivitual_NNs else 0.5), color="blue", alpha=(alpha+1)/2 )
             else:
                 _, = ax.plot( grid.cpu(), predictions[:,j].cpu(), linestyle="-", linewidth=(1 if plot_indivitual_NNs else 0.5), color="blue", alpha=(alpha+1)/2 )
+    #
+    # ~~~ Fill in a 95% confidence region
+    tittle = "95% Empirical Quantile Interval"
+    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if conditional_std==0) else (tittle+" Including Measurment Noise") )
+    return ax
+
+#
+# ~~~ Graph a symmetric, empirical 95% confidence interval of a model with a median point estimate
+def empirical_quantile( model, grid, ax, n_samples=100, conditional_std=0., alpha=0.2, plot_indivitual_NNs=True, how_many=6, **kwargs ):
+    #
+    # ~~~ Draw from the posterior predictive distribuion
+    example_output = model( grid, resample_weights=False )
+    predictions = torch.column_stack([
+            model(grid,resample_weights=True) + conditional_std*torch.randn_like(example_output)
+            for _ in range(n_samples)
+        ])
+    lo,med,hi = predictions.quantile( q=torch.Tensor([0.05,0.5,0.95]), dim=-1 )
+    #
+    # ~~~ Graph the median as a blue curve
+    _, = ax.plot( grid.cpu(), med.cpu() label="Predicted Posterior Mean", linestyle="-", linewidth=( 0.7 if plot_indivitual_NNs else 0.5 ), color="blue" )
+    #
+    # ~~~ Optionally, also graph several of the actual sample NN's as more blue curves (label only the last one)
+    if plot_indivitual_NNs:
+        which_NNs = (np.linspace( 1, n_posterior_samples, min(n_posterior_samples,how_many), dtype=np.int32 ) - 1).tolist()
+        for j in which_NNs:
+            if j==max(which_NNs):
+                _, = ax.plot( grid.cpu(), predictions[:,j].cpu(), label="A Sampled Network", linestyle="-", linewidth=(1 if plot_indivitual_NNs else 0.5), color="blue", alpha=(alpha+1)/2 )
+            else:
+                _, = ax.plot( grid.cpu(), predictions[:,j].cpu(), linestyle="-", linewidth=(1 if plot_indivitual_NNs else 0.5), color="blue", alpha=(alpha+1)/2 )
+    #
+    # ~~~ Fill in a 95% confidence region
     tittle = "95% Empirical Quantile Interval"
     _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if conditional_std==0) else (tittle+" Including Measurment Noise") )
     return ax
