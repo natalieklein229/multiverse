@@ -104,8 +104,10 @@ loss_fn = nn.MSELoss()
 fig,ax = plt.subplots(figsize=(12,6))
 grid = x_test.cpu()
 green_curve = y_test.squeeze().cpu()
+x_train_cpu = x_train.cpu()
+y_train_cpu = y_train.cpu()
 def plotting_routine(fig,ax):
-    return univar_figure( fig, ax, grid, green_curve, model=NN, title="Conventional, Deterministic Training", blue_curve=trivial_sampler )
+    return univar_figure( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, model=NN, title="Conventional, Deterministic Training", blue_curve=trivial_sampler )
 
 if make_gif:
     gif = GifMaker()
