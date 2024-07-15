@@ -102,6 +102,8 @@ dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train
 loss_fn = nn.MSELoss()
 
 fig,ax = plt.subplots(figsize=(12,6))
+grid = x_test.cpu()
+green_curve = y_test.squeeze().cpu()
 def plotting_routine(fig,ax):
     return univar_figure( fig, ax, grid, green_curve, model=NN, title="Conventional, Deterministic Training", blue_curve=trivial_sampler )
 
