@@ -80,7 +80,7 @@ def two_standard_deviations( model, grid, ax, n_samples=100, conditional_std=0.,
     lo, hi = mean-2*std, mean+2*std
     #
     # ~~~ Graph the median as a blue curve
-    _, = ax.plot( grid.cpu(), med.cpu() label="Predicted Posterior Mean", linestyle="-", linewidth=( 0.7 if plot_indivitual_NNs else 0.5 ), color="blue" )
+    _, = ax.plot( grid.cpu(), mean.cpu(), label="Predicted Posterior Mean", linestyle="-", linewidth=( 0.7 if plot_indivitual_NNs else 0.5 ), color="blue" )
     #
     # ~~~ Optionally, also graph several of the actual sample NN's as more blue curves (label only the last one)
     if plot_indivitual_NNs:
@@ -109,7 +109,7 @@ def empirical_quantile( model, grid, ax, n_samples=100, conditional_std=0., alph
     lo,med,hi = predictions.quantile( q=torch.Tensor([0.05,0.5,0.95]), dim=-1 )
     #
     # ~~~ Graph the median as a blue curve
-    _, = ax.plot( grid.cpu(), med.cpu() label="Predicted Posterior Mean", linestyle="-", linewidth=( 0.7 if plot_indivitual_NNs else 0.5 ), color="blue" )
+    _, = ax.plot( grid.cpu(), med.cpu(), label="Predicted Posterior Mean", linestyle="-", linewidth=( 0.7 if plot_indivitual_NNs else 0.5 ), color="blue" )
     #
     # ~~~ Optionally, also graph several of the actual sample NN's as more blue curves (label only the last one)
     if plot_indivitual_NNs:
