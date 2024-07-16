@@ -218,7 +218,7 @@ def empirical_quantile( predictions, grid, ax, predictions_include_conditional_s
 
 #
 # ~~~ Given a matrix of predictions, plot the empirical median and symmetric 95% confidence bars
-def plot_bnn_mean_and_std(
+def plot_bnn_empirical_quantiles(
             fig,
             ax,
             grid,
@@ -245,11 +245,11 @@ def plot_bnn_mean_and_std(
         )
 
 
-    #
-    # ~~~ Draw from the posterior predictive distribuion
-    example_output = model( grid, resample_weights=False )
-    predictions = torch.column_stack([
-            model(grid,resample_weights=True) + conditional_std*torch.randn_like(example_output)
-            for _ in range(n_samples)
-        ])
+    # #
+    # # ~~~ Draw from the posterior predictive distribuion
+    # example_output = model( grid, resample_weights=False )
+    # predictions = torch.column_stack([
+    #         model(grid,resample_weights=True) + conditional_std*torch.randn_like(example_output)
+    #         for _ in range(n_samples)
+    #     ])
 
