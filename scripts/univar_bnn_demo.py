@@ -168,7 +168,7 @@ posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt()
 #
 # ~~~ Plot the result
 fig,ax = plt.subplots(figsize=(12,6))
-fig,ax = plot_gpr( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, mean = (posterior_mean+sigma2 if extra_std else posterior_mean), posterior_std, predictions_include_conditional_std = extra_std )
+fig,ax = plot_gpr( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, mean = (posterior_mean+sigma2 if extra_std else posterior_mean), std = posterior_std, predictions_include_conditional_std = extra_std )
 plt.show()
 
 
