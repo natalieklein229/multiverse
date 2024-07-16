@@ -39,7 +39,7 @@ I believe, the complete list of required dependencies, excluding the standard li
 
 3. (_install pytorch_) This may depend on whether you want cuda, and on your conda channels. The simplest approach is: first try `conda install pytorch`. If that doesn't work (probably because channels) then try instead `pip install torch`.
 
-4. (_install this code_) Navigate to wherever you want (e.g., the Documents folder), and clone this repo there. Then (mimicing [the SEPIA installation guidelines](https://sepia-lanl.readthedocs.io/en/latest/#installation)), "from the command line, while in the [the root depository of this] directory, use the following command to install [bnns]:" `pip install -e .` "The -e flag signals developer mode, meaning that if you update the code from Github, your installation will automatically take those changes into account without requiring re-installation."
+4. (_install this code_) Navigate to wherever you want (e.g., the Documents folder), and clone this repo there. Then (mimicing [the SEPIA installation guidelines](https://sepia-lanl.readthedocs.io/en/latest/#installation)), "from the command line, while in the [the root depository of this repository], use the following command to install [bnns]:" `pip install -e .` "The -e flag signals developer mode, meaning that if you update the code from Github, your installation will automatically take those changes into account without requiring re-installation."
 
 5. (_verify installation_) Try running one of the python files, e.g., `python scripts/SSGE_multivar_demo.py`, which should create a .gif of some histograms.
 
