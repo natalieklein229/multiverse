@@ -7,7 +7,7 @@ hyperparameters = {
     "dtype" : torch.float,
     "Optimizer" : torch.optim.Adam,
     "lr" : 0.0005,
-    "batch_size" : 64
+    "batch_size" : 64,
     "n_epochs" = 200,
     "make_gif" : True,
     "how_often" : 10,                   # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
