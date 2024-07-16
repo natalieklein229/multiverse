@@ -75,7 +75,7 @@ def trivial_sampler(f,grid,ax):
 
 #
 # ~~~ Just plot a the model as an ordinary function
-def plot_NN(
+def plot_nn(
             fig,
             ax,
             grid,

@@ -18,7 +18,7 @@ from bnns.SSGE import BaseScoreEstimator as SSGE_backend
 
 #
 # ~~~ Package-specific utils
-from bnns.utils import plot_NN, plot_gpr, plot_bnn_mean_and_std, plot_bnn_empirical_quantiles
+from bnns.utils import plot_nn, plot_gpr, plot_bnn_mean_and_std, plot_bnn_empirical_quantiles
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
@@ -113,7 +113,7 @@ dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train
 loss_fn = nn.MSELoss()
 
 fig,ax = plt.subplots(figsize=(12,6))
-plotting_routine = lambda fig,ax: plot_NN( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
+plotting_routine = lambda fig,ax: plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
 
 if make_gif:
     gif = GifMaker()
