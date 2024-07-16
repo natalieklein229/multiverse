@@ -197,11 +197,12 @@ with torch.no_grad():
 #
 # ~~~ Some plotting stuff
 description_of_the_experiment = "fBNN" if functional else "BBB"
-def plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, bnn, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, n_posterior_samples=n_posterior_samples, title=description_of_the_experiment ):
+def plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, bnn, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, n_posterior_samples=n_posterior_samples, title=description_of_the_experiment, prior=False ):
     #
     # ~~~ Draw from the posterior predictive distribuion
     with torch.no_grad():
-        predictions = torch.column_stack([ bnn(grid,resample_weights=True) for _ in range(n_posterior_samples) ])
+        forward = bnn.prior_forward if prior else bnn
+        predictions = torch.column_stack([ forward(grid,resample_weights=True) for _ in range(n_posterior_samples) ])
         if predictions_include_conditional_std:
             predictions += bnn.conditional_std * torch.randn_like(predictions)
     return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
@@ -211,7 +212,7 @@ def plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, bnn, predict
 if make_gif:
     gif = GifMaker()      # ~~~ essentially just a list of images
     fig,ax = plt.subplots(figsize=(12,6))
-    fig,ax = plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, BNN )
+    fig,ax = plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, BNN, prior=True )
     for j in range(initial_frame_repetitions):
         gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
