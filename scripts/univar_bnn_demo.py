@@ -298,7 +298,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
 if make_gif:
     for j in range(final_frame_repetitions):
         gif.frames.append( gif.frames[-1] )
-    gif.develop( destination=os.path.join("scaled_by_12",("fBNN" if functional else "BBB")+f" Cv={BNN.conditional_std*scale}, e={n_epochs}, lr={lr}"), fps=24 )
+    gif.develop( destination=description_of_the_experiment, fps=24 )
     plt.close()
 else:
     fig,ax = plt.subplots(figsize=(12,6))
@@ -389,7 +389,7 @@ fig,ax = plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, e
 if make_gif:
     for j in range(final_frame_repetitions):
         gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
-    gif.develop( destination=os.path.join("scaled_by_12",f"Stein Ensemble, Cv={ensemble.conditional_std*scale}, bw={ensemble.bw}, e={n_Stein_iterations}, lr={lr}"), fps=24 )
+    gif.develop( destination=description_of_the_experiment, lr={lr}"), fps=24 )
 else:
     plt.show()
 

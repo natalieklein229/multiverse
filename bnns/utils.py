@@ -1,6 +1,8 @@
 
+import math
 import numpy as np
 import torch
+from torch.nn.init import _calculate_fan_in_and_fan_out, calculate_gain     # ~~~ used (optionally) to define the prior distribution on network weights
 try:
     from quality_of_life.my_base_utils import buffer
 except:
@@ -44,6 +46,24 @@ final_frame_repetitions = 48    # ~~~ for how many frames should the state after
 plot_indivitual_NNs = False     # ~~~ if True, do *not* plot confidence intervals and, instead, plot only a few sampled nets
 extra_std = False               # ~~~ if True, add the conditional std. when plotting the +/- 2 standard deviation bars
 
+#
+# ~~~ Helper function that just computes the log pdf of a multivariate normal distribution with independent coordinates
+def log_gaussian_pdf( where, mu, sigma ):
+    assert mu.shape==where.shape
+    marginal_log_probs = -((where-mu)/sigma)**2/2 - torch.log( math.sqrt(2*torch.pi)*sigma )   # ~~~ note: isn't (x-mu)/sigma numerically unstable, like numerical differentiation?
+    return marginal_log_probs.sum()
+
+#
+# ~~~ Define what we want the prior std. to be for each group of model parameters
+def get_std(p):
+    if len(p.shape)==1: # ~~~ for the biase vectors, take variance=1/length
+        numb_pars = len(p)
+        std = 1/math.sqrt(numb_pars)
+    else:   # ~~~ for the weight matrices, mimic pytorch's `xavier normal` initialization (https://pytorch.org/docs/stable/_modules/torch/nn/init.html#xavier_normal_)
+        fan_in, fan_out = _calculate_fan_in_and_fan_out(p)
+        gain = calculate_gain("relu")
+        std = gain * math.sqrt(2.0 / float(fan_in + fan_out))
+    return torch.tensor( std, device=p.device, dtype=p.dtype )
 
 #
 # ~~~ Somewhat general helper routine for making plots

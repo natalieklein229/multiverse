@@ -2,10 +2,8 @@
 import math
 import torch
 from torch import nn
-from torch.nn.init import _calculate_fan_in_and_fan_out, calculate_gain # ~~~ used (optionally) to define the prior distribution on network weights
-
 from bnns.SSGE import BaseScoreEstimator as SSGE_backend
-from bnns.SequentialGaussianBNN import log_gaussian_pdf
+from bnns.utils import log_gaussian_pdf, get_std
 
 from quality_of_life.my_torch_utils import get_flat_grads, set_flat_grads, nonredundant_copy_of_module_list
 
@@ -13,17 +11,6 @@ from quality_of_life.my_torch_utils import get_flat_grads, set_flat_grads, nonre
 kernel_stuff = SSGE_backend().grad_gram
 bandwidth_estimator = SSGE_backend().heuristic_sigma
 
-#
-# ~~~ Define what we want the prior std. to be for each group of model parameters
-def get_std(p):
-    if len(p.shape)==1: # ~~~ for the biase vectors, take variance=1/length
-        numb_pars = len(p)
-        std = 1/math.sqrt(numb_pars)
-    else:   # ~~~ for the weight matrices, mimic pytorch's `xavier normal` initialization (https://pytorch.org/docs/stable/_modules/torch/nn/init.html#xavier_normal_)
-        fan_in, fan_out = _calculate_fan_in_and_fan_out(p)
-        gain = calculate_gain("relu")
-        std = gain * math.sqrt(2.0 / float(fan_in + fan_out))
-    return torch.tensor( std, device=p.device, dtype=p.dtype )
 
 #
 # ~~~ Compute the mean-zero prior log gaussian density over the model weights

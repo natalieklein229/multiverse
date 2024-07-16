@@ -2,37 +2,15 @@
 import math
 import torch
 from torch import nn
-from torch.nn.init import _calculate_fan_in_and_fan_out, calculate_gain # ~~~ used (optionally) to define the prior distribution on network weights
 from bnns.SSGE import SpectralSteinEstimator as SSGE
+from bnns.utils import log_gaussian_pdf, get_std
+from quality_of_life.my_torch_utils import nonredundant_copy_of_module_list
 
 
 
 ### ~~~
 ## ~~~ Define a BNN with the necessary methods
 ### ~~~
-
-#
-# ~~~ Helper function which creates a new instance of the supplied sequential architeture (ChatGPT wrote this one)
-def nonredundant_copy_of_module_list(module_list):
-    architecture = [ (type(layer),layer) for layer in module_list ]
-    layers = []
-    for layer_type, layer in architecture:
-        if layer_type == torch.nn.Linear:
-            #
-            # ~~~ For linear layers, create a brand new linear layer of the same size independent of the original
-            layers.append(torch.nn.Linear( layer.in_features, layer.out_features ))
-        else:
-            #
-            # ~~~ For other layers (activations, Flatten, softmax, etc.) just copy it
-            layers.append(layer)
-    return nn.ModuleList(layers)
-
-#
-# ~~~ Helper function that just computes the log pdf of a multivariate normal distribution with independent coordinates
-def log_gaussian_pdf( where, mu, sigma ):
-    assert mu.shape==where.shape
-    marginal_log_probs = -((where-mu)/sigma)**2/2 - torch.log( math.sqrt(2*torch.pi)*sigma )   # ~~~ note: isn't (x-mu)/sigma numerically unstable, like numerical differentiation?
-    return marginal_log_probs.sum()
 
 #
 # ~~~ Main class: intended to mimic nn.Sequential
@@ -54,15 +32,7 @@ class SequentialGaussianBNN(nn.Module):
         # ~~~ Define the prior std. dev.'s: first copy the architecture (maybe inefficient?), then set requires_grad=False and assign the desired std values
         self.prior_std = nonredundant_copy_of_module_list(self.model_mean)
         for p in self.prior_std.parameters():
-            p.requires_grad = False
-            if len(p.shape)==1: # ~~~ for the bias vectors, simply take variance=1/length
-                numb_pars = len(p)
-                std = 1/math.sqrt(numb_pars)
-            else:   # ~~~ for the weight matrices, mimic pytorch's `xavier normal` initialization (https://pytorch.org/docs/stable/_modules/torch/nn/init.html#xavier_normal_)
-                fan_in, fan_out = _calculate_fan_in_and_fan_out(p)
-                gain = calculate_gain("relu")
-                std = gain * math.sqrt(2.0 / float(fan_in + fan_out))
-            p = p.fill_(std)
+            p = p.fill_(get_std(p))
         #
         # ~~~ Define a "standard normal distribution in the shape of our neural network"
         self.realized_standard_normal = nonredundant_copy_of_module_list(self.model_mean)
