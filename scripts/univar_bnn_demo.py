@@ -100,7 +100,7 @@ x_train, y_train, x_test, y_test = x_train.to(DEVICE), y_train.to(DEVICE), x_tes
 ## ~~~ Define some objects used for plotting
 ### ~~~
 
-grid = x_test.cpu()
+grid = x_test
 green_curve =  y_test.cpu().squeeze()
 x_train_cpu = x_train.cpu()
 y_train_cpu = y_train.cpu().squeeze()
