@@ -5,7 +5,6 @@ from quality_of_life.my_base_utils import dict_to_json
 hyperparameters = {
     "DEVICE" : "cpu",
     "seed" : 2024,
-    "dtype" : torch.float,
     "Optimizer" : torch.optim.Adam,
     "lr" : 0.0005,
     "batch_size" : 64,

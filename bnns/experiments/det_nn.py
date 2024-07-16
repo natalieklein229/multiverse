@@ -33,7 +33,7 @@ hyperparameters = json_to_dict("new_trial.json")
 # ~~~ Misc.
 DEVICE = hyperparameters["DEVICE"]
 torch.manual_seed(hyperparameters["seed"])
-torch.set_default_dtype(hyperparameters["dtype"])    # ~~~ note: why doesn't torch.double work?
+torch.set_default_dtype(torch.float)    # ~~~ note: why doesn't torch.double work?
 
 #
 # ~~~ Regarding the training method
