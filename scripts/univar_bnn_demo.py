@@ -182,7 +182,7 @@ plt.show()
 
 #
 # ~~~ The optimizer and dataloader
-dataloader = torch.utils.data.DataLoader( convert_Tensors_to_Dataset(x_train,y_train), batch_size=batch_size )
+dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train,y_train), batch_size=batch_size )
 mean_optimizer = Optimizer( BNN.model_mean.parameters(), lr=lr )
 std_optimizer  =  Optimizer( BNN.model_std.parameters(), lr=lr )
 
@@ -336,7 +336,7 @@ pbar.close()
 
 # #
 # # ~~~ The dataloader
-# dataloader = torch.utils.data.DataLoader( convert_Tensors_to_Dataset(x_train,y_train), batch_size=batch_size )
+# dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train,y_train), batch_size=batch_size )
 
 # #
 # # ~~~
