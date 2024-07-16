@@ -18,11 +18,11 @@ from bnns.SSGE import BaseScoreEstimator as SSGE_backend
 
 #
 # ~~~ Package-specific utils
-from bnns.utils import univar_figure, trivial_sampler, two_standard_deviations, pre_computed_mean_and_std
+from bnns.utils import plot_NN, plot_gpr, plot_bnn_mean_and_std, plot_bnn_empirical_quantiles
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
-from quality_of_life.my_visualization_utils import GifMaker, buffer, points_with_curves
+from quality_of_life.my_visualization_utils import GifMaker
 from quality_of_life.my_torch_utils         import nonredundant_copy_of_module_list
 from quality_of_life.my_numpy_utils         import moving_average
 from quality_of_life.my_base_utils          import support_for_progress_bars
@@ -113,8 +113,7 @@ dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train
 loss_fn = nn.MSELoss()
 
 fig,ax = plt.subplots(figsize=(12,6))
-def plotting_routine(fig,ax):
-    return univar_figure( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, model=NN, title="Conventional, Deterministic Training", blue_curve=trivial_sampler )
+plotting_routine = lambda fig,ax: plot_NN( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
 
 if make_gif:
     gif = GifMaker()
@@ -164,15 +163,12 @@ with torch.no_grad():
 
 K_inv = torch.linalg.inv( K_in + sigma2*torch.eye(len(x_train),device=DEVICE) )
 posterior_mean  =  (K_btwn@K_inv@y_train).squeeze()
-posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt() + sigma2
+posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt()
 
 #
 # ~~~ Plot the result
 fig,ax = plt.subplots(figsize=(12,6))
-def plotting_routine(fig,ax):
-    return univar_figure( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, model=None, title="Conventional, Deterministic Training", blue_curve=lambda model,grid,ax: pre_computed_mean_and_std(model,grid,ax,posterior_mean,posterior_std) )
-
-fig,ax = plotting_routine(fig,ax)
+fig,ax = plot_gpr( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, mean = (posterior_mean+sigma2 if extra_std else posterior_mean), posterior_std, predictions_include_conditional_std = extra_std )
 plt.show()
 
 
