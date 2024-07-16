@@ -194,10 +194,10 @@ def plotting_routine(fig,ax):
     # ~~~ Draw from the posterior predictive distribuion
     predictions = torch.column_stack([
             BNN(grid,resample_weights=True) + conditional_std*torch.randn_like(y_test)
-            for _ in range(n_samples)
+            for _ in range(n_posterior_samples)
         ]) if extra_std else torch.column_stack([
             BNN(grid,resample_weights=True)
-            for _ in range(n_samples)
+            for _ in range(n_posterior_samples)
         ])
     return plot_bnn( fig, ax, grid, green_curve, x_train, y_train, predictions, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, title=description_of_the_experiment )
 
