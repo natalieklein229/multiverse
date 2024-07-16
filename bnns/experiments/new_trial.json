@@ -1,4 +1,4 @@
-hyperparameter_template = {
+{
     "DEVICE" : "cpu",
     "dtype" : "float",
     "seed" : 2024,
