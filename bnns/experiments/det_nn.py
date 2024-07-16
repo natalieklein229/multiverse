@@ -7,7 +7,7 @@
 # ~~~ Standard packages
 import os
 import torch
-from torch import nn
+from torch import nn, optim
 from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 from importlib import import_module
@@ -27,35 +27,36 @@ from quality_of_life.my_base_utils          import support_for_progress_bars, di
 ## ~~~ Config
 ### ~~~
 
+#
+# ~~~ Template for what the dictionary of hyperparmeters should look like
+hyperparameter_template = {
+    "DEVICE" : "cpu",
+    "dtype" : "float",
+    "seed" : 2024,
+    "Optimizer" : "Adam",
+    "lr" : 0.0005,
+    "batch_size" : 64,
+    "n_epochs" : 200,
+    "make_gif" : True,
+    "how_often" : 10,                   # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
+    "initial_frame_repetitions" : 24,   # ~~~ for how many frames should the state of initialization be rendered
+    "final_frame_repetitions" : 48,     # ~~~ for how many frames should the state after training be rendered
+    "data" : "univar_missing_middle",
+    "model" : "univar_NN"
+}
+
+#
+# ~~~ Load a dictionary of the hyperparameters
 hyperparameters = json_to_dict("new_trial.json")
 
 #
-# ~~~ Misc.
-DEVICE = hyperparameters["DEVICE"]
-torch.manual_seed(hyperparameters["seed"])
-torch.set_default_dtype(torch.float)    # ~~~ note: why doesn't torch.double work?
+# ~~~ Load the dictionary's key/value pairs into the global namespace
+globals.update(hyperparameters)         # ~~~ e.g., if hyperparameters=={ "a":1, "B":2 }, then this defines a=1 and B=2
 
 #
-# ~~~ Regarding the training method
-Optimizer = torch.optim.Adam
-batch_size = hyperparameters["batch_size"]
-lr = hyperparameters["lr"]
-n_epochs = hyperparameters["n_epochs"]
-
-#
-# ~~~ Regarding visualizaing of training
-make_gif = hyperparameters["make_gif"]         # ~~~ if true, aa .gif is made (even if false, the function is still plotted)
-how_often = hyperparameters["how_often"]          # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
-initial_frame_repetitions = hyperparameters["initial_frame_repetitions"]  # ~~~ for how many frames should the state of initialization be rendered
-final_frame_repetitions = hyperparameters["final_frame_repetitions"]     # ~~~ for how many frames should the state after training be rendered
-
-#
-# ~~~ Regarding the data
-data = hyperparameters["data"]
-
-#
-# ~~~ Regarding the model
-model = hyperparameters["model"]
+# ~~~ Handle the dtypes not writeable in .json format (e.g., if your dictionary includes the value `torch.optim.Adam` you save it as .json)
+Optimizer = getattr(optim,Optimizer)            # ~~~ e.g., Optimizer=="Adam"
+torch.set_default_dtype(getattr(torch,dtype))   # ~~~ e.g., dtype="float"
 
 
 
@@ -86,6 +87,7 @@ except:
     data = import_module(data)
 
 x_train, y_train, x_test, y_test = data.x_train.to(DEVICE), data.y_train.to(DEVICE), data.x_test.to(DEVICE), data.y_test.to(DEVICE)
+data_is_univariate = (x_train.squeeze().ndim==1)
 
 
 
@@ -110,8 +112,8 @@ loss_fn = nn.MSELoss()
 
 #
 # ~~~ Some plotting stuff
-fig,ax = plt.subplots(figsize=(12,6))
-if make_gif:
+if data_is_univariate and make_gif:
+    fig,ax = plt.subplots(figsize=(12,6))
     gif = GifMaker()
 
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
@@ -126,17 +128,25 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
             optimizer.zero_grad()
         #
         # ~~~ Plotting logic
-        if make_gif and (e+1)%how_often==0:
+        if data_is_univariate and make_gif and (e+1)%how_often==0:
             fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
             gif.capture()   # ~~~ save a picture of the current plot (whatever plt.show() would show)
 
 #
 # ~~~ Afterwards, develop the .gif if applicable
-if make_gif:
-    gif.develop( destination="NN", fps=24 )
-else:
-    fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
-    plt.show()
+if data_is_univariate:
+    if make_gif:
+        gif.develop( destination="NN", fps=24 )
+    else:
+        fig,ax = plt.subplots(figsize=(12,6))
+        fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
+        plt.show()
+
+
+
+### ~~~
+## ~~~ Evaluate the trained model
+### ~~~
 
 
 
