@@ -146,4 +146,4 @@ else:
 
 hyperparameters["metric"] = "here, we will record metrics"
 file_name = generate_json_filename()
-dict_to_json(file_name)
+dict_to_json(file_name,file_name)
