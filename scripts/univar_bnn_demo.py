@@ -5,6 +5,7 @@
 
 #
 # ~~~ Standard packages
+import os
 import torch
 from torch import nn
 from tqdm import tqdm, trange
@@ -41,7 +42,7 @@ torch.set_default_dtype(torch.float)    # ~~~ note: why doesn't torch.double wor
 
 #
 # ~~~ Regarding the training method
-functional = True
+functional = False
 Optimizer = torch.optim.Adam
 batch_size = 64
 lr = 0.0005
@@ -71,7 +72,7 @@ initial_frame_repetitions = 24  # ~~~ for how many frames should the state of in
 final_frame_repetitions = 48    # ~~~ for how many frames should the state after training be rendered
 plot_indivitual_NNs = False     # ~~~ if True, do *not* plot confidence intervals and, instead, plot only a few sampled nets
 extra_std = False               # ~~~ if True, add the conditional std. when plotting the +/- 2 standard deviation bars
-visualize_bnn_using_quantiles = True
+visualize_bnn_using_quantiles = False
 how_many_individual_predictions = 6
 
 
