@@ -10,6 +10,7 @@ import torch
 from torch import nn
 from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
+from importlib import import_module
 
 #
 # ~~~ The guts of the model
@@ -27,7 +28,7 @@ from bnns.utils import plot_nn, plot_gpr, plot_bnn_mean_and_std, plot_bnn_empiri
 from quality_of_life.my_visualization_utils import GifMaker
 from quality_of_life.my_torch_utils         import nonredundant_copy_of_module_list
 from quality_of_life.my_numpy_utils         import moving_average
-from quality_of_life.my_base_utils          import support_for_progress_bars
+from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict
 
 
 
@@ -76,6 +77,10 @@ extra_std = False               # ~~~ if True, add the conditional std. when plo
 visualize_bnn_using_quantiles = False
 how_many_individual_predictions = 6
 
+#
+# ~~~ Regarding the data
+data = "univar_missing_middle"
+
 
 ### ~~~
 ## ~~~ Define the network architecture
@@ -91,8 +96,12 @@ NN, BNN = NN.to(DEVICE), BNN.to(DEVICE)
 ## ~~~ Define the data
 ### ~~~
 
-from bnns.data.univar_data.missing_middle import x_train, y_train, x_test, y_test, ground_truth
-x_train, y_train, x_test, y_test = x_train.to(DEVICE), y_train.to(DEVICE), x_test.to(DEVICE), y_test.to(DEVICE)
+try:
+    data = import_module("bnns.data"+data)
+except:
+    data = import_module(data)
+
+x_train, y_train, x_test, y_test = data.x_train.to(DEVICE), data.y_train.to(DEVICE), data.x_test.to(DEVICE), data.y_test.to(DEVICE)
 
 
 
