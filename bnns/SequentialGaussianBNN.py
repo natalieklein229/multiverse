@@ -27,7 +27,6 @@ class SequentialGaussianBNN(nn.Module):
             # ~~~ Define the prior means: first copy the architecture (maybe inefficient?), then set requires_grad=False and assign the desired mean values (==zero, for now)
             self.prior_mean = nonredundant_copy_of_module_list(self.model_mean)
             for p in self.prior_mean.parameters():
-                p.requires_grad = False
                 p = torch.zeros_like(p) # ~~~ assign the desired prior mean values
             #
             # ~~~ Define the prior std. dev.'s: first copy the architecture (maybe inefficient?), then set requires_grad=False and assign the desired std values
