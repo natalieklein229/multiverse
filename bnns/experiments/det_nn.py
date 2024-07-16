@@ -37,7 +37,7 @@ torch.set_default_dtype(torch.float)    # ~~~ note: why doesn't torch.double wor
 
 #
 # ~~~ Regarding the training method
-Optimizer = hyperparameters["Optimizer"]
+Optimizer = torch.optim.Adam
 batch_size = hyperparameters["batch_size"]
 lr = hyperparameters["lr"]
 n_epochs = hyperparameters["lr"]
