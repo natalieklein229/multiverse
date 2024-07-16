@@ -1,10 +1,8 @@
-
-import torch
-from quality_of_life.my_base_utils import dict_to_json
-
-hyperparameters = {
+hyperparameter_template = {
     "DEVICE" : "cpu",
+    "dtype" : "float",
     "seed" : 2024,
+    "Optimizer" : "Adam",
     "lr" : 0.0005,
     "batch_size" : 64,
     "n_epochs" : 200,
@@ -15,6 +13,3 @@ hyperparameters = {
     "data" : "univar_missing_middle",
     "model" : "univar_NN"
 }
-
-
-dict_to_json( hyperparameters, "new_trial.json", override=True )

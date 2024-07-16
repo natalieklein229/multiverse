@@ -11,6 +11,7 @@ from torch import nn, optim
 from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 from importlib import import_module
+import argparse
 
 #
 # ~~~ Package-specific utils
@@ -46,8 +47,14 @@ hyperparameter_template = {
 }
 
 #
-# ~~~ Load a dictionary of the hyperparameters
-hyperparameters = json_to_dict("new_trial.json")
+# ~~~ Use argparse to extract the file name from `python det_nn.py --json "my_hyperparmeters.json"` (https://stackoverflow.com/a/67731094)
+parser = argparse.ArgumentParser()
+parser.add_argument( '--json', type=str, required=True )
+name = parser.parse_args().json
+
+#
+# ~~~ Load the .json file into a dictionary
+hyperparameters = json_to_dict( name if name.endswith(".json") else name+".json" )
 
 #
 # ~~~ Load the dictionary's key/value pairs into the global namespace
