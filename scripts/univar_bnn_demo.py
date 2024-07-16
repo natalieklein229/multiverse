@@ -389,7 +389,7 @@ fig,ax = plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, e
 if make_gif:
     for j in range(final_frame_repetitions):
         gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
-    gif.develop( destination=description_of_the_experiment, lr={lr}"), fps=24 )
+    gif.develop( destination=description_of_the_experiment, fps=24 )
 else:
     plt.show()
 
