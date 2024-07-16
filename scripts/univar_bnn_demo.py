@@ -138,13 +138,14 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
         if make_gif and (e+1)%how_often==0:
             fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
             gif.capture()   # ~~~ save a picture of the current plot (whatever plt.show() would show)
-    #
-    # ~~~ Afterwards, develop the .gif if applicable
-    if make_gif:
-        gif.develop( destination="NN", fps=24 )
-    else:
-        fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
-        plt.show()
+
+#
+# ~~~ Afterwards, develop the .gif if applicable
+if make_gif:
+    gif.develop( destination="NN", fps=24 )
+else:
+    fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
+    plt.show()
 
 
 
