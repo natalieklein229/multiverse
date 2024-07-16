@@ -198,12 +198,10 @@ description_of_the_experiment = "fBNN" if functional else "BBB"
 def plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, bnn, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, n_posterior_samples=n_posterior_samples, title=description_of_the_experiment ):
     #
     # ~~~ Draw from the posterior predictive distribuion
-    predictions = torch.column_stack([
-            bnn(grid,resample_weights=True)
-            for _ in range(n_posterior_samples)
-        ])
-    if predictions_include_conditional_std:
-        predictions += bnn.conditional_std * torch.randn_like(predictions)
+    with torch.no_grad():
+        predictions = torch.column_stack([ bnn(grid,resample_weights=True) for _ in range(n_posterior_samples) ])
+        if predictions_include_conditional_std:
+            predictions += bnn.conditional_std * torch.randn_like(predictions)
     return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
 
 #
@@ -344,9 +342,10 @@ description_of_the_experiment = "Stein Neural Network Ensemble"
 def plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, title=description_of_the_experiment ):
     #
     # ~~~ Draw from the posterior predictive distribuion
-    predictions = ensemble(grid)
-    if predictions_include_conditional_std:
-        predictions += ensemble.conditional_std * torch.randn_like(predictions)
+    with torch.no_grad():
+        predictions = ensemble(grid)
+        if predictions_include_conditional_std:
+            predictions += ensemble.conditional_std * torch.randn_like(predictions)
     return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
 
 

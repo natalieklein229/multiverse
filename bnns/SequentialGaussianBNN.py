@@ -22,17 +22,18 @@ class SequentialGaussianBNN(nn.Module):
         self.model_mean = nn.ModuleList(args)
         self.model_std  = nonredundant_copy_of_module_list(self.model_mean)
         self.n_layers   = len(self.model_mean)
-        #
-        # ~~~ Define the prior means: first copy the architecture (maybe inefficient?), then set requires_grad=False and assign the desired mean values (==zero, for now)
-        self.prior_mean = nonredundant_copy_of_module_list(self.model_mean)
-        for p in self.prior_mean.parameters():
-            p.requires_grad = False
-            p = torch.zeros_like(p) # ~~~ assign the desired prior mean values
-        #
-        # ~~~ Define the prior std. dev.'s: first copy the architecture (maybe inefficient?), then set requires_grad=False and assign the desired std values
-        self.prior_std = nonredundant_copy_of_module_list(self.model_mean)
-        for p in self.prior_std.parameters():
-            p = p.fill_(get_std(p))
+        with torch.no_grad():
+            #
+            # ~~~ Define the prior means: first copy the architecture (maybe inefficient?), then set requires_grad=False and assign the desired mean values (==zero, for now)
+            self.prior_mean = nonredundant_copy_of_module_list(self.model_mean)
+            for p in self.prior_mean.parameters():
+                p.requires_grad = False
+                p = torch.zeros_like(p) # ~~~ assign the desired prior mean values
+            #
+            # ~~~ Define the prior std. dev.'s: first copy the architecture (maybe inefficient?), then set requires_grad=False and assign the desired std values
+            self.prior_std = nonredundant_copy_of_module_list(self.model_mean)
+            for p in self.prior_std.parameters():
+                p = p.fill_(get_std(p))
         #
         # ~~~ Define a "standard normal distribution in the shape of our neural network"
         self.realized_standard_normal = nonredundant_copy_of_module_list(self.model_mean)
