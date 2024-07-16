@@ -18,4 +18,4 @@ hyperparameters = {
 }
 
 
-dict_to_json( hyperparameters, "new_trial.json" )
+dict_to_json( hyperparameters, "new_trial.json", override=True )
