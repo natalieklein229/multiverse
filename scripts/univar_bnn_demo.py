@@ -97,7 +97,7 @@ NN, BNN = NN.to(DEVICE), BNN.to(DEVICE)
 ### ~~~
 
 try:
-    data = import_module("bnns.data"+data)
+    data = import_module("bnns.data."+data)
 except:
     data = import_module(data)
 
