@@ -1,50 +1,35 @@
 
 import math
+import pytz
+from datetime import datetime
 import numpy as np
 import torch
 from torch.nn.init import _calculate_fan_in_and_fan_out, calculate_gain     # ~~~ used (optionally) to define the prior distribution on network weights
+
+from quality_of_life.my_base_utils import process_for_saving, dict_to_json
 try:
     from quality_of_life.my_base_utils import buffer
 except:
     from quality_of_life.my_visualization_utils import buffer   # ~~~ deprecated
     print("Please update quality_of_life")
 
-
-class TrainingConfig:
-    DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
-
 #
-# ~~~ Regarding the training method
-functional = True
-Optimizer = torch.optim.Adam
-batch_size = 64
-lr = 0.0005
-n_epochs = 2000
-n_posterior_samples = 100   # ~~~ posterior distributions are approximated as empirical dist.'s of this many samples
-n_MC_samples = 20           # ~~~ expectations are estimated as an average of this many Monte-Carlo samples
-project = True              # ~~~ if True, use projected gradient descent; else use the weird thing from the paper
-projection_tol = 1e-6       # ~~~ for numerical reasons, project onto [projection_tol,Inf), rather than onto [0,Inft)
-conditional_std = 0.9       # ~~~ what Natalie was explaining to me on Tuesday
-
-#
-# ~~~ Regarding the SSGE
-M = 50          # ~~~ M in SSGE
-J = 10          # ~~~ J in SSGE
-eta = 0.0001    # ~~~ stability term added to the SSGE's RBF kernel
-
-#
-# ~~~ Regarding Stein GD
-n_Stein_particles = n_posterior_samples
-n_Stein_iterations = n_epochs
-
-#
-# ~~~ Regarding visualizaing of training
-make_gif = True         # ~~~ if true, aa .gif is made (even if false, the function is still plotted)
-how_often = 10          # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
-initial_frame_repetitions = 24  # ~~~ for how many frames should the state of initialization be rendered
-final_frame_repetitions = 48    # ~~~ for how many frames should the state after training be rendered
-plot_indivitual_NNs = False     # ~~~ if True, do *not* plot confidence intervals and, instead, plot only a few sampled nets
-extra_std = False               # ~~~ if True, add the conditional std. when plotting the +/- 2 standard deviation bars
+# ~~~ Generate a .json filename based on the current datetime
+def generate_json_filename(verbose=True):
+    time = datetime.now(pytz.timezone('US/Mountain'))   # ~~~ current date and time MST
+    file_name = time[:time.find(".")].replace(" ","_")  # ~~~ remove the number of seconds (indicated with ".") and replace blank space (between date and time) with an underscore
+    file_name = process_for_saving(file_name+".json")   # ~~~ in case two trials were started within the same minute, e.g., procsess_for_saving("path_that_exists.json") returns "path_that_exists (1).json"
+    if verbose:
+        if time.hour > 12:
+            hour = time.hour - 12
+            suffix = "pm"
+        else:
+            hour = time.hour
+            suffix = "am"
+        print("")
+        print(f"    Generating file name {file_name}" at {hour}:{time.minute}{suffix})
+        print("")
+    return file_name
 
 #
 # ~~~ Helper function that just computes the log pdf of a multivariate normal distribution with independent coordinates

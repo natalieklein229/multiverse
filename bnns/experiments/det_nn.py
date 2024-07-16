@@ -14,7 +14,7 @@ from importlib import import_module
 
 #
 # ~~~ Package-specific utils
-from bnns.utils import plot_nn
+from bnns.utils import plot_nn, generate_json_filename
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
@@ -27,33 +27,35 @@ from quality_of_life.my_base_utils          import support_for_progress_bars, di
 ## ~~~ Config
 ### ~~~
 
+hyperparameters = json_to_dict("new_trial.json")
+
 #
 # ~~~ Misc.
-DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
-torch.manual_seed(2024)
-torch.set_default_dtype(torch.float)    # ~~~ note: why doesn't torch.double work?
+DEVICE = hyperparameters["DEVICE"]
+torch.manual_seed(hyperparameters["seed"])
+torch.set_default_dtype(hyperparameters["dtype"])    # ~~~ note: why doesn't torch.double work?
 
 #
 # ~~~ Regarding the training method
-Optimizer = torch.optim.Adam
-batch_size = 64
-lr = 0.0005
-n_epochs = 200
+Optimizer = hyperparameters["Optimizer"]
+batch_size = hyperparameters["batch_size"]
+lr = hyperparameters["lr"]
+n_epochs = hyperparameters["lr"]
 
 #
 # ~~~ Regarding visualizaing of training
-make_gif = True         # ~~~ if true, aa .gif is made (even if false, the function is still plotted)
-how_often = 10          # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
-initial_frame_repetitions = 24  # ~~~ for how many frames should the state of initialization be rendered
-final_frame_repetitions = 48    # ~~~ for how many frames should the state after training be rendered
+make_gif = hyperparameters["make_gif"]         # ~~~ if true, aa .gif is made (even if false, the function is still plotted)
+how_often = hyperparameters["how_often"]          # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
+initial_frame_repetitions = hyperparameters["initial_frame_repetitions"]  # ~~~ for how many frames should the state of initialization be rendered
+final_frame_repetitions = hyperparameters["final_frame_repetitions"]     # ~~~ for how many frames should the state after training be rendered
 
 #
 # ~~~ Regarding the data
-data = "univar_missing_middle"
+data = hyperparameters["data"]
 
 #
 # ~~~ Regarding the model
-model = "univar_NN"
+model = hyperparameters["model"]
 
 
 
@@ -136,3 +138,12 @@ else:
     fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
     plt.show()
 
+
+
+### ~~~
+## ~~~ Save the results
+### ~~~
+
+hyperparameters["metric"] = "here, we will record metrics"
+file_name = generate_json_filename()
+dict_to_json(file_name)
