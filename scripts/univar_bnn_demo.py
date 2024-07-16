@@ -71,7 +71,7 @@ initial_frame_repetitions = 24  # ~~~ for how many frames should the state of in
 final_frame_repetitions = 48    # ~~~ for how many frames should the state after training be rendered
 plot_indivitual_NNs = False     # ~~~ if True, do *not* plot confidence intervals and, instead, plot only a few sampled nets
 extra_std = False               # ~~~ if True, add the conditional std. when plotting the +/- 2 standard deviation bars
-bnn_quantiles = True
+visualize_bnn_using_quantiles = True
 how_many_individual_predictions = 6
 
 
@@ -102,7 +102,7 @@ grid = x_test.cpu()
 green_curve =  y_test.cpu().squeeze()
 x_train_cpu = x_train.cpu()
 y_train_cpu = y_train.cpu().squeeze()
-plot_bnn = plot_bnn_empirical_quantiles if bnn_quantiles else plot_bnn_mean_and_std
+plot_predictions = plot_bnn_empirical_quantiles if visualize_bnn_using_quantiles else plot_bnn_mean_and_std
 
 
 
@@ -115,9 +115,9 @@ optimizer = Optimizer( NN.parameters(), lr=lr )
 dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train,y_train), batch_size=batch_size )
 loss_fn = nn.MSELoss()
 
+#
+# ~~~ Some plotting stuff
 fig,ax = plt.subplots(figsize=(12,6))
-plotting_routine = lambda fig,ax: plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
-
 if make_gif:
     gif = GifMaker()
 
@@ -134,14 +134,14 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
         #
         # ~~~ Plotting logic
         if make_gif and (e+1)%how_often==0:
-            fig, ax = plotting_routine(fig,ax)
+            fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
             gif.capture()   # ~~~ save a picture of the current plot (whatever plt.show() would show)
     #
     # ~~~ Afterwards, develop the .gif if applicable
     if make_gif:
         gif.develop( destination="NN", fps=24 )
     else:
-        fig, ax = plotting_routine(fig,ax)
+        fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
         plt.show()
 
 
@@ -187,31 +187,30 @@ mean_optimizer = Optimizer( BNN.model_mean.parameters(), lr=lr )
 std_optimizer  =  Optimizer( BNN.model_std.parameters(), lr=lr )
 
 #
-# ~~~ Some plotting stuff
-description_of_the_experiment = "fBNN" if functional else "BBB"
-def plotting_routine(fig,ax):
-    #
-    # ~~~ Draw from the posterior predictive distribuion
-    predictions = torch.column_stack([
-            BNN(grid,resample_weights=True) + conditional_std*torch.randn_like(y_test)
-            for _ in range(n_posterior_samples)
-        ]) if extra_std else torch.column_stack([
-            BNN(grid,resample_weights=True)
-            for _ in range(n_posterior_samples)
-        ])
-    return plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, title=description_of_the_experiment )
-
-#
 # ~~~ Specify, now, the assumed conditional variance for the likelihood function (i.e., for the theoretical data-generating proces)
 with torch.no_grad():
     BNN.conditional_std = torch.sqrt(((NN(x_train)-y_train)**2).mean()) if conditional_std=="auto" else torch.tensor(conditional_std)
+
+#
+# ~~~ Some plotting stuff
+description_of_the_experiment = "fBNN" if functional else "BBB"
+def plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, bnn, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, n_posterior_samples=n_posterior_samples, title=description_of_the_experiment ):
+    #
+    # ~~~ Draw from the posterior predictive distribuion
+    predictions = torch.column_stack([
+            bnn(grid,resample_weights=True)
+            for _ in range(n_posterior_samples)
+        ])
+    if predictions_include_conditional_std:
+        predictions += bnn.conditional_std * torch.randn_like(predictions)
+    return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
 
 #
 # ~~~ Plot the state of the posterior predictive distribution upon its initialization
 if make_gif:
     gif = GifMaker()      # ~~~ essentially just a list of images
     fig,ax = plt.subplots(figsize=(12,6))
-    fig,ax = plotting_routine(fig,ax)
+    fig,ax = plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, BNN )
     for j in range(initial_frame_repetitions):
         gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
@@ -289,7 +288,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
         #
         # ~~~ Plotting logic
         if make_gif and n_posterior_samples>0 and (e+1)%how_often==0:
-            fig,ax = plotting_routine(fig,ax)
+            fig,ax = plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, BNN )
             gif.capture()
             # print("captured")
 
@@ -302,7 +301,7 @@ if make_gif:
     plt.close()
 else:
     fig,ax = plt.subplots(figsize=(12,6))
-    fig,ax = plotting_routine(fig,ax)
+    fig,ax = plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, BNN )
     plt.show()
 
 pbar.close()
@@ -318,92 +317,80 @@ pbar.close()
 
 
 
-# ### ~~~
-# ## ~~~ Do a Stein neural network ensemble
-# ### ~~~
+### ~~~
+## ~~~ Do a Stein neural network ensemble
+### ~~~
 
-# #
-# # ~~~ Instantiate an ensemble
-# with torch.no_grad():
-#     conditional_std = torch.sqrt(((NN(x_train)-y_train)**2).mean()) if conditional_std=="auto" else torch.tensor(conditional_std)
+#
+# ~~~ Instantiate an ensemble
+with torch.no_grad():
+    conditional_std = torch.sqrt(((NN(x_train)-y_train)**2).mean()) if conditional_std=="auto" else torch.tensor(conditional_std)
 
-# ensemble = Ensemble(
-#         architecture = nonredundant_copy_of_module_list(NN),
-#         n_copies = n_Stein_particles,
-#         Optimizer = lambda params: Optimizer( params, lr=lr ),
-#         conditional_std = conditional_std
-#     )
+ensemble = Ensemble(
+        architecture = nonredundant_copy_of_module_list(NN),
+        n_copies = n_Stein_particles,
+        Optimizer = lambda params: Optimizer( params, lr=lr ),
+        conditional_std = conditional_std
+    )
 
-# #
-# # ~~~ The dataloader
-# dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train,y_train), batch_size=batch_size )
+#
+# ~~~ The dataloader
+dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train,y_train), batch_size=batch_size )
 
-# #
-# # ~~~
-# description_of_the_experiment = "Stein Neural Network Ensemble"
-# if PLOT_INDIVIDUAL_NNs:
-#     def ensemble_figure( fig, ax , point_estimate=None, std=None, title=None, how_many=18 ):
-#         with torch.no_grad():
-#             preds = ensemble(x_test)
-#         green_curve, = ax.plot( grid, green_curve, label="Ground Truth", linestyle='--', linewidth=.5, color="green", )
-#         for j in range(how_many):
-#             j+= 80
-#             blue_curve, = ax.plot( grid, preds[:,j].cpu(), label=f"Network {j}", linestyle="-", linewidth=.5, color="blue" )
-#         _ = ax.scatter( x_train.cpu(), y_train.cpu(), color="green" )
-#         _ = ax.set_ylim(ylim)
-#         _ = ax.legend()
-#         _ = ax.grid()
-#         _ = ax.set_title( description_of_the_experiment if title is None else title )
-#         _ = fig.tight_layout()
-#         return fig, ax
-# else:
-#     def ensemble_figure( fig, ax, extra_std=ensemble.conditional_std if extra_std else 0. ):
-#         with torch.no_grad():
-#             preds = ensemble(x_test)
-#             return populate_figure( fig, ax, point_estimate=preds.mean(dim=-1).cpu(), std=preds.std(dim=-1).cpu(), title="Stein Neural Network Ensemble", extra_std=extra_std )
+#
+# ~~~ Some plotting stuff
+description_of_the_experiment = "Stein Neural Network Ensemble"
+def plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, title=description_of_the_experiment ):
+    #
+    # ~~~ Draw from the posterior predictive distribuion
+    predictions = ensemble(grid)
+    if predictions_include_conditional_std:
+        predictions += ensemble.conditional_std * torch.randn_like(predictions)
+    return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
 
-# #
-# # ~~~ Plot the state of the posterior predictive distribution upon its initialization
-# if make_gif:
-#     gif = GifMaker()      # ~~~ essentially just a list of images
-#     fig,ax = plt.subplots(figsize=(12,6))
-#     fig,ax = ensemble_figure( fig, ax, extra_std=ensemble.conditional_std if extra_std else 0. )
-#     for j in range(initial_frame_repetitions):
-#         gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
-# #
-# # ~~~ Do the actual training loop
-# K_history, grads_of_K_history = [], []
-# with support_for_progress_bars():   # ~~~ this just supports green progress bars
-#     for e in trange( n_epochs, ascii=' >=', desc="Stein Enemble" ):
-#         #
-#         # ~~~ Training logic
-#         for X, y in dataloader:
-#             X, y = X.to(DEVICE), y.to(DEVICE)
-#             # ensemble.train_step(X,y)
-#             K, grads_of_K = ensemble.train_step(X,y)
-#             K_history.append( (torch.eye( *K.shape, device=K.device ) - K).abs().mean().item() )
-#             grads_of_K_history.append( grads_of_K.abs().mean().item() )
-#         #
-#         # ~~~ Plotting logic
-#         if make_gif and n_posterior_samples>0 and (e+1)%how_often==0:
-#             fig,ax = ensemble_figure( fig, ax, extra_std=ensemble.conditional_std if extra_std else 0. )
-#             gif.capture()
-#             # print("captured")
+#
+# ~~~ Plot the state of the posterior predictive distribution upon its initialization
+if make_gif:
+    gif = GifMaker()      # ~~~ essentially just a list of images
+    fig,ax = plt.subplots(figsize=(12,6))
+    fig,ax = plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble )
+    for j in range(initial_frame_repetitions):
+        gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
-# #
-# # ~~~ Plot the state of the posterior predictive distribution at the end of training
-# if not make_gif:    # ~~~ make a plot now
-#     fig,ax = plt.subplots(figsize=(12,6))
+#
+# ~~~ Do the actual training loop
+K_history, grads_of_K_history = [], []
+with support_for_progress_bars():   # ~~~ this just supports green progress bars
+    for e in trange( n_epochs, ascii=' >=', desc="Stein Enemble" ):
+        #
+        # ~~~ Training logic
+        for X, y in dataloader:
+            X, y = X.to(DEVICE), y.to(DEVICE)
+            # ensemble.train_step(X,y)
+            K, grads_of_K = ensemble.train_step(X,y)
+            K_history.append( (torch.eye( *K.shape, device=K.device ) - K).abs().mean().item() )
+            grads_of_K_history.append( grads_of_K.abs().mean().item() )
+        #
+        # ~~~ Plotting logic
+        if make_gif and n_posterior_samples>0 and (e+1)%how_often==0:
+            fig,ax = plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble )
+            gif.capture()
+            # print("captured")
 
-# fig,ax = ensemble_figure( fig, ax, extra_std=ensemble.conditional_std if extra_std else 0. )
+#
+# ~~~ Plot the state of the posterior predictive distribution at the end of training
+if not make_gif:    # ~~~ make a plot now
+    fig,ax = plt.subplots(figsize=(12,6))
 
-# if make_gif:
-#     for j in range(final_frame_repetitions):
-#         gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
-#     gif.develop( destination=os.path.join("scaled_by_12",f"Stein Ensemble, Cv={ensemble.conditional_std*scale}, bw={ensemble.bw}, e={n_Stein_iterations}, lr={lr}"), fps=24 )
-# else:
-#     plt.show()
+fig,ax = plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble )
+
+if make_gif:
+    for j in range(final_frame_repetitions):
+        gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
+    gif.develop( destination=os.path.join("scaled_by_12",f"Stein Ensemble, Cv={ensemble.conditional_std*scale}, bw={ensemble.bw}, e={n_Stein_iterations}, lr={lr}"), fps=24 )
+else:
+    plt.show()
 
 
 
