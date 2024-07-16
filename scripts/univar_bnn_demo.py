@@ -15,6 +15,7 @@ from matplotlib import pyplot as plt
 # ~~~ The guts of the model
 
 from bnns.SequentialGaussianBNN import SequentialGaussianBNN
+from bnns.Stein_GD import SequentialSteinEnsemble as Ensemble
 from bnns.SSGE import BaseScoreEstimator as SSGE_backend
 
 #
