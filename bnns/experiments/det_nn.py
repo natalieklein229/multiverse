@@ -58,7 +58,7 @@ hyperparameters = json_to_dict( name if name.endswith(".json") else name+".json"
 
 #
 # ~~~ Load the dictionary's key/value pairs into the global namespace
-globals.update(hyperparameters)         # ~~~ e.g., if hyperparameters=={ "a":1, "B":2 }, then this defines a=1 and B=2
+globals().update(hyperparameters)         # ~~~ e.g., if hyperparameters=={ "a":1, "B":2 }, then this defines a=1 and B=2
 
 #
 # ~~~ Handle the dtypes not writeable in .json format (e.g., if your dictionary includes the value `torch.optim.Adam` you save it as .json)
