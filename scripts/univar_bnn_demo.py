@@ -71,7 +71,8 @@ initial_frame_repetitions = 24  # ~~~ for how many frames should the state of in
 final_frame_repetitions = 48    # ~~~ for how many frames should the state after training be rendered
 plot_indivitual_NNs = False     # ~~~ if True, do *not* plot confidence intervals and, instead, plot only a few sampled nets
 extra_std = False               # ~~~ if True, add the conditional std. when plotting the +/- 2 standard deviation bars
-
+bnn_quantiles = True
+how_many_individual_predictions = 6
 
 
 ### ~~~
@@ -101,6 +102,8 @@ grid = x_test.cpu()
 green_curve =  y_test.cpu().squeeze()
 x_train_cpu = x_train.cpu()
 y_train_cpu = y_train.cpu().squeeze()
+plot_bnn = plot_bnn_empirical_quantiles if bnn_quantiles else plot_bnn_mean_and_std
+
 
 
 
@@ -173,130 +176,145 @@ plt.show()
 
 
 
-# ### ~~~
-# ## ~~~ Do Bayesian training
-# ### ~~~
+### ~~~
+## ~~~ Do Bayesian training
+### ~~~
 
-# #
-# # ~~~ The optimizer and dataloader
-# dataloader = torch.utils.data.DataLoader( convert_Tensors_to_Dataset(x_train,y_train), batch_size=batch_size )
-# mean_optimizer = Optimizer( BNN.model_mean.parameters(), lr=lr )
-# std_optimizer  =  Optimizer( BNN.model_std.parameters(), lr=lr )
+#
+# ~~~ The optimizer and dataloader
+dataloader = torch.utils.data.DataLoader( convert_Tensors_to_Dataset(x_train,y_train), batch_size=batch_size )
+mean_optimizer = Optimizer( BNN.model_mean.parameters(), lr=lr )
+std_optimizer  =  Optimizer( BNN.model_std.parameters(), lr=lr )
 
-# #
-# # ~~~ Specify, now, the assumed conditional variance for the likelihood function (i.e., for the theoretical data-generating proces)
-# with torch.no_grad():
-#     BNN.conditional_std = torch.sqrt(((NN(x_train)-y_train)**2).mean()) if conditional_std=="auto" else torch.tensor(conditional_std)
+#
+# ~~~ Some plotting stuff
+description_of_the_experiment = "fBNN" if functional else "BBB"
+def plotting_routine(fig,ax):
+    #
+    # ~~~ Draw from the posterior predictive distribuion
+    predictions = torch.column_stack([
+            BNN(grid,resample_weights=True) + conditional_std*torch.randn_like(y_test)
+            for _ in range(n_samples)
+        ]) if extra_std else torch.column_stack([
+            BNN(grid,resample_weights=True)
+            for _ in range(n_samples)
+        ])
+    return plot_bnn( fig, ax, grid, green_curve, x_train, y_train, predictions, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, title=description_of_the_experiment )
 
-# #
-# # ~~~ Plot the state of the posterior predictive distribution upon its initialization
-# if make_gif:
-#     gif = GifMaker()      # ~~~ essentially just a list of images
-#     fig,ax = plt.subplots(figsize=(12,6))
-#     fig,ax = populate_figure( fig, ax, extra_std=BNN.conditional_std if extra_std else 0. )    # ~~~ plot the current state of the model
-#     for j in range(initial_frame_repetitions):
-#         gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
+#
+# ~~~ Specify, now, the assumed conditional variance for the likelihood function (i.e., for the theoretical data-generating proces)
+with torch.no_grad():
+    BNN.conditional_std = torch.sqrt(((NN(x_train)-y_train)**2).mean()) if conditional_std=="auto" else torch.tensor(conditional_std)
 
-# #
-# # ~~~ Do Bayesian training
-# metrics = ( "ELBO", "post", "prior", "like" )
-# history = {}
-# for metric in metrics:
-#     history[metric] = []
+#
+# ~~~ Plot the state of the posterior predictive distribution upon its initialization
+if make_gif:
+    gif = GifMaker()      # ~~~ essentially just a list of images
+    fig,ax = plt.subplots(figsize=(12,6))
+    fig,ax = plotting_routine(fig,ax)
+    for j in range(initial_frame_repetitions):
+        gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
-# #
-# # ~~~ Define how to project onto the constraint set
-# if project:
-#     BNN.rho = lambda x:x
-#     def projection_step(BNN):
-#         with torch.no_grad():
-#             for p in BNN.model_std.parameters():
-#                 p.data = torch.clamp( p.data, min=projection_tol )
-#     projection_step(BNN)
+#
+# ~~~ Do Bayesian training
+metrics = ( "ELBO", "post", "prior", "like" )
+history = {}
+for metric in metrics:
+    history[metric] = []
 
-# #
-# # ~~~ Define the measurement set for functional training
-# BNN.measurement_set = x_train
+#
+# ~~~ Define how to project onto the constraint set
+if project:
+    BNN.rho = lambda x:x
+    def projection_step(BNN):
+        with torch.no_grad():
+            for p in BNN.model_std.parameters():
+                p.data = torch.clamp( p.data, min=projection_tol )
+    projection_step(BNN)
 
-
-# # torch.autograd.set_detect_anomaly(True)
-# with support_for_progress_bars():   # ~~~ this just supports green progress bars
-#     pbar = tqdm( desc=description_of_the_experiment, total=n_epochs*len(dataloader), ascii=' >=' )
-#     for e in range(n_epochs):
-#         #
-#         # ~~~ Training logic
-#         for X, y in dataloader:
-#             X, y = X.to(DEVICE), y.to(DEVICE)
-#             for j in range(n_MC_samples):
-#                 #
-#                 # ~~~ Compute the gradient of the loss function
-#                 if functional:
-#                     log_posterior_density, log_prior_density = BNN.functional_kl(resample_measurement_set=False)
-#                 else:
-#                     BNN.sample_from_standard_normal()   # ~~~ draw a new Monte-Carlo sample for estimating the integrals as an MC average
-#                     log_posterior_density   =   BNN.log_posterior_density()
-#                     log_prior_density       =   BNN.log_prior_density()
-#             #
-#             # ~~~ Add the the likelihood term and differentiate
-#             log_likelihood_density = BNN.log_likelihood_density(X,y)
-#             negative_ELBO = ( log_posterior_density - log_prior_density - log_likelihood_density )/n_MC_samples
-#             negative_ELBO.backward()
-#             #
-#             # ~~~ This would be training based only on the data:
-#             # loss = -BNN.log_likelihood_density(X,y)
-#             # loss.backward()
-#             #
-#             # ~~~ Do the gradient-based update
-#             for optimizer in (mean_optimizer,std_optimizer):
-#                 optimizer.step()
-#                 optimizer.zero_grad()
-#             #
-#             # ~~~ Do the projection
-#             if project:
-#                 projection_step(BNN)
-#             #
-#             # ~~~ Record some diagnostics
-#             history["ELBO"].append( -negative_ELBO.item())
-#             history["post"].append( log_posterior_density.item())
-#             history["prior"].append(log_prior_density.item())
-#             history["like"].append( log_likelihood_density.item())
-#             to_print = {
-#                 "ELBO" : f"{-negative_ELBO.item():<4.2f}",
-#                 "post" : f"{log_posterior_density.item():<4.2f}",
-#                 "prior": f"{log_prior_density.item():<4.2f}",
-#                 "like" : f"{log_likelihood_density.item():<4.2f}"
-#             }
-#             pbar.set_postfix(to_print)
-#             _ = pbar.update()
-#         #
-#         # ~~~ Plotting logic
-#         if make_gif and n_posterior_samples>0 and (e+1)%how_often==0:
-#             fig,ax = populate_figure(fig,ax)
-#             gif.capture()
-#             # print("captured")
-
-# #
-# # ~~~ Plot the state of the posterior predictive distribution at the end of training
-# if make_gif:
-#     for j in range(final_frame_repetitions):
-#         gif.frames.append( gif.frames[-1] )
-#     gif.develop( destination=os.path.join("scaled_by_12",("fBNN" if functional else "BBB")+f" Cv={BNN.conditional_std*scale}, e={n_epochs}, lr={lr}"), fps=24 )
-#     plt.close()
-# else:
-#     fig,ax = plt.subplots(figsize=(12,6))
-#     fig,ax = populate_figure( fig, ax, extra_std=BNN.conditional_std if extra_std else 0. )
-#     plt.show()
-
-# pbar.close()
+#
+# ~~~ Define the measurement set for functional training
+BNN.measurement_set = x_train
 
 
+# torch.autograd.set_detect_anomaly(True)
+with support_for_progress_bars():   # ~~~ this just supports green progress bars
+    pbar = tqdm( desc=description_of_the_experiment, total=n_epochs*len(dataloader), ascii=' >=' )
+    for e in range(n_epochs):
+        #
+        # ~~~ Training logic
+        for X, y in dataloader:
+            X, y = X.to(DEVICE), y.to(DEVICE)
+            for j in range(n_MC_samples):
+                #
+                # ~~~ Compute the gradient of the loss function
+                if functional:
+                    log_posterior_density, log_prior_density = BNN.functional_kl(resample_measurement_set=False)
+                else:
+                    BNN.sample_from_standard_normal()   # ~~~ draw a new Monte-Carlo sample for estimating the integrals as an MC average
+                    log_posterior_density   =   BNN.log_posterior_density()
+                    log_prior_density       =   BNN.log_prior_density()
+            #
+            # ~~~ Add the the likelihood term and differentiate
+            log_likelihood_density = BNN.log_likelihood_density(X,y)
+            negative_ELBO = ( log_posterior_density - log_prior_density - log_likelihood_density )/n_MC_samples
+            negative_ELBO.backward()
+            #
+            # ~~~ This would be training based only on the data:
+            # loss = -BNN.log_likelihood_density(X,y)
+            # loss.backward()
+            #
+            # ~~~ Do the gradient-based update
+            for optimizer in (mean_optimizer,std_optimizer):
+                optimizer.step()
+                optimizer.zero_grad()
+            #
+            # ~~~ Do the projection
+            if project:
+                projection_step(BNN)
+            #
+            # ~~~ Record some diagnostics
+            history["ELBO"].append( -negative_ELBO.item())
+            history["post"].append( log_posterior_density.item())
+            history["prior"].append(log_prior_density.item())
+            history["like"].append( log_likelihood_density.item())
+            to_print = {
+                "ELBO" : f"{-negative_ELBO.item():<4.2f}",
+                "post" : f"{log_posterior_density.item():<4.2f}",
+                "prior": f"{log_prior_density.item():<4.2f}",
+                "like" : f"{log_likelihood_density.item():<4.2f}"
+            }
+            pbar.set_postfix(to_print)
+            _ = pbar.update()
+        #
+        # ~~~ Plotting logic
+        if make_gif and n_posterior_samples>0 and (e+1)%how_often==0:
+            fig,ax = plotting_routine(fig,ax)
+            gif.capture()
+            # print("captured")
 
-# # fig, (ax_gpr,ax_bbb) = plt.subplots(1,2,figsize=(12,6))
-# # posterior_mean  =  (K_btwn@K_inv@y_train).squeeze()
-# # posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt()
-# # fig,ax_gpr = populate_figure( fig, ax_gpr, point_estimate=posterior_mean.cpu(), std=posterior_std.cpu(), title="Gaussian Process Regression" )
-# # fig,ax_bbb = populate_figure( fig, ax_bbb )
-# # plt.show()
+#
+# ~~~ Plot the state of the posterior predictive distribution at the end of training
+if make_gif:
+    for j in range(final_frame_repetitions):
+        gif.frames.append( gif.frames[-1] )
+    gif.develop( destination=os.path.join("scaled_by_12",("fBNN" if functional else "BBB")+f" Cv={BNN.conditional_std*scale}, e={n_epochs}, lr={lr}"), fps=24 )
+    plt.close()
+else:
+    fig,ax = plt.subplots(figsize=(12,6))
+    fig,ax = plotting_routine(fig,ax)
+    plt.show()
+
+pbar.close()
+
+
+
+# fig, (ax_gpr,ax_bbb) = plt.subplots(1,2,figsize=(12,6))
+# posterior_mean  =  (K_btwn@K_inv@y_train).squeeze()
+# posterior_std  =  ( K_out - K_btwn@K_inv@K_btwn.T ).diag().sqrt()
+# fig,ax_gpr = populate_figure( fig, ax_gpr, point_estimate=posterior_mean.cpu(), std=posterior_std.cpu(), title="Gaussian Process Regression" )
+# fig,ax_bbb = populate_figure( fig, ax_bbb )
+# plt.show()
 
 
 
