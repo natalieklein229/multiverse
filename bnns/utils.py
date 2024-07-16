@@ -27,7 +27,7 @@ def generate_json_filename(verbose=True):
             hour = time.hour
             suffix = "am"
         print("")
-        print(f"    Generating file name {file_name}" at {hour}:{time.minute}{suffix})
+        print(f"    Generating file name {file_name} at {hour}:{time.minute}{suffix}")
         print("")
     return file_name
 
