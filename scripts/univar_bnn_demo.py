@@ -199,7 +199,7 @@ def plotting_routine(fig,ax):
             BNN(grid,resample_weights=True)
             for _ in range(n_posterior_samples)
         ])
-    return plot_bnn( fig, ax, grid, green_curve, x_train, y_train, predictions, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, title=description_of_the_experiment )
+    return plot_bnn( fig, ax, grid, green_curve, x_train_cpu, x_train_cpu, predictions, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, title=description_of_the_experiment )
 
 #
 # ~~~ Specify, now, the assumed conditional variance for the likelihood function (i.e., for the theoretical data-generating proces)
