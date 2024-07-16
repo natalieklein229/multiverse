@@ -16,9 +16,9 @@ except:
 #
 # ~~~ Generate a .json filename based on the current datetime
 def generate_json_filename(verbose=True):
-    time = datetime.now(pytz.timezone('US/Mountain'))   # ~~~ current date and time MST
-    file_name = time[:time.find(".")].replace(" ","_")  # ~~~ remove the number of seconds (indicated with ".") and replace blank space (between date and time) with an underscore
-    file_name = process_for_saving(file_name+".json")   # ~~~ in case two trials were started within the same minute, e.g., procsess_for_saving("path_that_exists.json") returns "path_that_exists (1).json"
+    time = str(datetime.now(pytz.timezone('US/Mountain')))  # ~~~ current date and time MST
+    file_name = time[:time.find(".")].replace(" ","_")      # ~~~ remove the number of seconds (indicated with ".") and replace blank space (between date and time) with an underscore
+    file_name = process_for_saving(file_name+".json")       # ~~~ in case two trials were started within the same minute, e.g., procsess_for_saving("path_that_exists.json") returns "path_that_exists (1).json"
     if verbose:
         if time.hour > 12:
             hour = time.hour - 12
