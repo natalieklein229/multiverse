@@ -50,11 +50,12 @@ hyperparameter_template = {
 # ~~~ Use argparse to extract the file name from `python det_nn.py --json "my_hyperparmeters.json"` (https://stackoverflow.com/a/67731094)
 parser = argparse.ArgumentParser()
 parser.add_argument( '--json', type=str, required=True )
-name = parser.parse_args().json
+input_json_filename = parser.parse_args().json
+input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
 
 #
 # ~~~ Load the .json file into a dictionary
-hyperparameters = json_to_dict( name if name.endswith(".json") else name+".json" )
+hyperparameters = json_to_dict(input_json_filename)
 
 #
 # ~~~ Load the dictionary's key/value pairs into the global namespace
@@ -155,12 +156,18 @@ if data_is_univariate:
 ## ~~~ Evaluate the trained model
 ### ~~~
 
+hyperparameters["metric"] = "here, we will record metrics"
+
 
 
 ### ~~~
 ## ~~~ Save the results
 ### ~~~
 
-hyperparameters["metric"] = "here, we will record metrics"
-file_name = generate_json_filename()
-dict_to_json(file_name,file_name)
+if input_json_filename.startswith("demo"):
+    my_warn(f"Results are not saved when the hyperparameter json filename starts with 'demo' (in this case {input_json_filename})")
+else:
+    outpu_json_filename = generate_json_filename()
+    dict_to_json( dict=outpu_json_filename, outpu_json_filename )
+
+#
