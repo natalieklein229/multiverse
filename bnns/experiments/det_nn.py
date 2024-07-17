@@ -146,7 +146,7 @@ hyperparameters["metric"] = "here, we will record metrics"
 ### ~~~
 
 if input_json_filename.startswith("demo"):
-    my_warn(f"Results are not saved when the hyperparameter json filename starts with 'demo' (in this case {input_json_filename})")
+    my_warn(f'Results are not saved when the hyperparameter json filename starts with "demo" (in this case `{input_json_filename}`)')
 else:
     output_json_filename = generate_json_filename()
     dict_to_json( hyperparameters, output_json_filename )
