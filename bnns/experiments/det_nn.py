@@ -25,7 +25,7 @@ from quality_of_life.my_base_utils          import support_for_progress_bars, di
 
 
 ### ~~~
-## ~~~ Config
+## ~~~ Config/setup
 ### ~~~
 
 #
@@ -66,47 +66,24 @@ globals().update(hyperparameters)         # ~~~ e.g., if hyperparameters=={ "a":
 Optimizer = getattr(optim,Optimizer)            # ~~~ e.g., Optimizer=="Adam"
 torch.set_default_dtype(getattr(torch,dtype))   # ~~~ e.g., dtype="float"
 
-
-
-### ~~~
-## ~~~ Load the network architecture
-### ~~~
-
 #
-# ~~~ `import bnns.models.<model> as model`
+# ~~~ Load the network architecture
 try:
-    model = import_module(f"bnns.models.{model}")
+    model = import_module(f"bnns.models.{model}")   # ~~~ `import bnns.models.<model> as model`
 except:
     model = import_module(model)
 
 NN = model.NN.to(DEVICE)
 
-
-
-### ~~~
-## ~~~ Load the data
-### ~~~
-
 #
-# ~~~ `import bnns.data.<data> as data`
+# ~~~ Load the data
 try:
-    data = import_module(f"bnns.data.{data}")
+    data = import_module(f"bnns.data.{data}")   # ~~~ `import bnns.data.<data> as data`
 except:
     data = import_module(data)
 
 x_train, y_train, x_test, y_test = data.x_train.to(DEVICE), data.y_train.to(DEVICE), data.x_test.to(DEVICE), data.y_test.to(DEVICE)
 data_is_univariate = (x_train.squeeze().ndim==1)
-
-
-
-### ~~~
-## ~~~ Define some objects used for plotting
-### ~~~
-
-grid = x_test
-green_curve =  y_test.cpu().squeeze()
-x_train_cpu = x_train.cpu()
-y_train_cpu = y_train.cpu().squeeze()
 
 
 
@@ -120,6 +97,10 @@ loss_fn = nn.MSELoss()
 
 #
 # ~~~ Some plotting stuff
+grid = x_test
+green_curve =  y_test.cpu().squeeze()
+x_train_cpu = x_train.cpu()
+y_train_cpu = y_train.cpu().squeeze()
 if data_is_univariate and make_gif:
     fig,ax = plt.subplots(figsize=(12,6))
     gif = GifMaker()
@@ -167,7 +148,7 @@ hyperparameters["metric"] = "here, we will record metrics"
 if input_json_filename.startswith("demo"):
     my_warn(f"Results are not saved when the hyperparameter json filename starts with 'demo' (in this case {input_json_filename})")
 else:
-    outpu_json_filename = generate_json_filename()
-    dict_to_json( dict=outpu_json_filename, outpu_json_filename )
+    output_json_filename = generate_json_filename()
+    dict_to_json( hyperparameters, output_json_filename )
 
 #
