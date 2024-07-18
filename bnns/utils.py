@@ -33,7 +33,7 @@ def generate_json_filename(verbose=True):
     return file_name
 
 #
-# ~~~ Helper function that just computes the log pdf of a multivariate normal distribution with independent coordinates
+# ~~~ Compute the log pdf of a multivariate normal distribution with independent coordinates
 def log_gaussian_pdf( where, mu, sigma ):
     assert mu.shape==where.shape
     marginal_log_probs = -((where-mu)/sigma)**2/2 - torch.log( math.sqrt(2*torch.pi)*sigma )   # ~~~ note: isn't (x-mu)/sigma numerically unstable, like numerical differentiation?
@@ -50,6 +50,20 @@ def get_std(p):
         gain = calculate_gain("relu")
         std = gain * math.sqrt(2.0 / float(fan_in + fan_out))
     return torch.tensor( std, device=p.device, dtype=p.dtype )
+
+#
+# ~~~ My version of the missing feature: a `dataset.to` method
+def set_Dataset_attributes( dataset, device, dtype ):
+    try:
+        dataset.X = dataset.X.to( device=device, dtype=dtype )
+        dataset.y = dataset.y.to( device=device, dtype=dtype )
+    except AttributeError:
+        raise NotImplementedError # TODO
+
+
+### ~~~
+## ~~~ Plotting routines
+### ~~~
 
 #
 # ~~~ Somewhat general helper routine for making plots

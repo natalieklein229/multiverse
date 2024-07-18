@@ -3,6 +3,7 @@ import os
 import torch
 import pyreadr                  # ~~~ from https://stackoverflow.com/a/61699417
 import numpy as np
+from quality_of_life.my_torch_utils import convert_Tensors_to_Dataset
 
 #
 # ~~~ Set path to the .rda file
@@ -39,4 +40,10 @@ x_val = torch.from_numpy(inputs_np[idx_val])
 y_train = torch.from_numpy(out_np[idx_train])
 y_test = torch.from_numpy(out_np[idx_test])
 y_val = torch.from_numpy(out_np[idx_val])
+
+#
+# ~~~ Finally, package as objects of class torch.utils.data.Dataset
+D_train = convert_Tensors_to_Dataset(x_train,y_train)
+D_test = convert_Tensors_to_Dataset(x_test,y_test)
+D_val = convert_Tensors_to_Dataset(x_val,y_val)
 

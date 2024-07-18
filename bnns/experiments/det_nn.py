@@ -15,7 +15,7 @@ import argparse
 
 #
 # ~~~ Package-specific utils
-from bnns.utils import plot_nn, generate_json_filename
+from bnns.utils import plot_nn, generate_json_filename, set_Dataset_attributes
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
@@ -63,8 +63,9 @@ globals().update(hyperparameters)         # ~~~ e.g., if hyperparameters=={ "a":
 
 #
 # ~~~ Handle the dtypes not writeable in .json format (e.g., if your dictionary includes the value `torch.optim.Adam` you save it as .json)
-Optimizer = getattr(optim,Optimizer)            # ~~~ e.g., Optimizer=="Adam"
-torch.set_default_dtype(getattr(torch,dtype))   # ~~~ e.g., dtype="float"
+dtype = getattr(torch,dtype)                    # ~~~ e.g., "float" (str) -> torch.float (torch.dtype) 
+torch.set_default_dtype(dtype)
+Optimizer = getattr(optim,Optimizer)            # ~~~ e.g., "Adam" (str) -> optim.Adam
 
 #
 # ~~~ Load the network architecture
@@ -73,7 +74,7 @@ try:
 except:
     model = import_module(model)
 
-NN = model.NN.to(DEVICE)
+NN = model.NN.to( device=DEVICE, dtype=dtype )
 
 #
 # ~~~ Load the data
@@ -82,8 +83,9 @@ try:
 except:
     data = import_module(data)
 
-x_train, y_train, x_test, y_test = data.x_train.to(DEVICE), data.y_train.to(DEVICE), data.x_test.to(DEVICE), data.y_test.to(DEVICE)
-data_is_univariate = (x_train.squeeze().ndim==1)
+D_train = set_Dataset_attributes( data.D_train, device=DEVICE, dtype=dtype )
+D_test  =  set_Dataset_attributes( data.D_val, device=DEVICE, dtype=dtype )
+data_is_univariate = (D_train[0][0].numel()==1)
 
 
 
@@ -92,18 +94,19 @@ data_is_univariate = (x_train.squeeze().ndim==1)
 ### ~~~
 
 optimizer = Optimizer( NN.parameters(), lr=lr )
-dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train,y_train), batch_size=batch_size )
+dataloader = torch.utils.data.DataLoader( D_train, batch_size=batch_size )
 loss_fn = nn.MSELoss()
 
 #
 # ~~~ Some plotting stuff
-grid = x_test
-green_curve =  y_test.cpu().squeeze()
-x_train_cpu = x_train.cpu()
-y_train_cpu = y_train.cpu().squeeze()
-if data_is_univariate and make_gif:
-    fig,ax = plt.subplots(figsize=(12,6))
-    gif = GifMaker()
+if data_is_univariate:
+    grid = data.x_test.to( device=DEVICE, dtype=dtype )
+    green_curve =  data.y_test.cpu().squeeze()
+    x_train_cpu = data.x_train.cpu()
+    y_train_cpu = data.y_train.cpu().squeeze()
+    if make_gif:
+        fig,ax = plt.subplots(figsize=(12,6))
+        gif = GifMaker()
 
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
     for e in trange( n_epochs, ascii=' >=', desc="Conventional, Deterministic Training" ):
