@@ -55,6 +55,7 @@ def get_std(p):
 # ~~~ My version of the missing feature: a `dataset.to` method
 def set_Dataset_attributes( dataset, device, dtype ):
     try:
+        raise AttributeError
         #
         # ~~~ Directly access and modify the underlying tensors
         dataset.X = dataset.X.to( device=device, dtype=dtype )
