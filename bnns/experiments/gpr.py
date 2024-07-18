@@ -77,9 +77,12 @@ try:
 except:
     data = import_module(data)
 
-D_train = set_Dataset_attributes( data.D_train, device=DEVICE, dtype=dtype )
-D_test  =  set_Dataset_attributes( data.D_val, device=DEVICE, dtype=dtype )
-data_is_univariate = (D_train[0][0].numel()==1)
+x_train, y_train = convert_Dataset_to_Tensors(data.D_train) # ~~~ for generality, convert D_train to tensors instead of attempting to import x_train and y_train directly
+x_test, _        = convert_Dataset_to_Tensors(data.D_test)  # ~~~ for generality, convert D_train to tensors instead of attempting to import x_test directly
+x_train = x_train.to( device=DEVICE, dtype=dtype )
+y_train = y_train.to( device=DEVICE, dtype=dtype )
+x_test  =  x_test.to( device=DEVICE, dtype=dtype )
+data_is_univariate = (data.D_train[0][0].numel()==1)
 
 
 
