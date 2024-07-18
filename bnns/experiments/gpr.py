@@ -16,7 +16,7 @@ from bnns.SSGE import BaseScoreEstimator as SSGE_backend
 
 #
 # ~~~ Package-specific utils
-from bnns.utils import plot_gpr, set_Dataset_attributes
+from bnns.utils import plot_gpr, set_Dataset_attributes, generate_json_filename
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
