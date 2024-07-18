@@ -116,6 +116,13 @@ except:
     model = import_module(model)
 
 BNN = model.BNN.to( device=DEVICE, dtype=dtype )
+BNN.conditional_std = torch.tensor(conditional_std)
+BNN.prior_J = prior_J
+BNN.post_J = post_J
+BNN.prior_eta = prior_eta
+BNN.post_eta = post_eta
+BNN.prior_M = prior_M
+BNN.post_M = post_M
 
 #
 # ~~~ Load the data
@@ -139,10 +146,6 @@ data_is_univariate = (D_train[0][0].numel()==1)
 dataloader = torch.utils.data.DataLoader( D_train, batch_size=batch_size )
 mean_optimizer = Optimizer( BNN.model_mean.parameters(), lr=lr )
 std_optimizer  =  Optimizer( BNN.model_std.parameters(), lr=lr )
-
-#
-# ~~~ Specify, now, the assumed conditional variance for the likelihood function (i.e., for the theoretical data-generating proces)
-BNN.conditional_std = torch.tensor(conditional_std)
 
 #
 # ~~~ Some plotting stuff
