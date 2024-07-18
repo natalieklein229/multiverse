@@ -33,21 +33,6 @@ idx_train, idx_test, idx_val = np.split( idx, [n_train,n_train+n_test] )
 
 #
 # ~~~ Use indices for a train/val/test split
-x_train, x_test, x_val = inputs_np[idx_train], 
-#
-# ~~~ Compute indices for a train/val/test split
-np.random.seed(2024)
-n_train = 2800
-n_test = 600
-n_val = 600
-n = len(inputs_np)
-assert len(inputs_np) == 4000 == len(out_np)
-assert n_train + n_test + n_val == n
-idx = np.random.permutation(n)
-idx_train, idx_test, idx_val = np.split( idx, [n_train,n_train+n_test] )
-
-#
-# ~~~ Use indices for a train/val/test split
 x_train = torch.from_numpy(inputs_np[idx_train])
 x_test = torch.from_numpy(inputs_np[idx_test])
 x_val = torch.from_numpy(inputs_np[idx_val])
