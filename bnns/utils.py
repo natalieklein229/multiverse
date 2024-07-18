@@ -57,6 +57,7 @@ def set_Dataset_attributes( dataset, device, dtype ):
     try:
         dataset.X = dataset.X.to( device=device, dtype=dtype )
         dataset.y = dataset.y.to( device=device, dtype=dtype )
+        return dataset
     except AttributeError:
         raise NotImplementedError # TODO
 
