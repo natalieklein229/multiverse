@@ -49,9 +49,15 @@ hyperparameter_template = {
 #
 # ~~~ Use argparse to extract the file name from `python det_nn.py --json "my_hyperparmeters.json"` (https://stackoverflow.com/a/67731094)
 parser = argparse.ArgumentParser()
-parser.add_argument( '--json', type=str, required=True )
-input_json_filename = parser.parse_args().json
-input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
+try:
+    parser.add_argument( '--json', type=str, required=True )
+    input_json_filename = parser.parse_args().json
+    input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
+except:
+    print("")
+    print("    Hint: try `python det_nn.py --json demo_det_nn.json")
+    print("")
+    raise
 
 #
 # ~~~ Load the .json file into a dictionary
