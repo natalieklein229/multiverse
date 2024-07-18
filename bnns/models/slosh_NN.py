@@ -3,9 +3,9 @@ from torch import nn
 torch.manual_seed(2024)
 
 NN = nn.Sequential(
-        nn.Linear(1, 100),
+        nn.Linear(5, 100),
         nn.ReLU(),
         nn.Linear(100, 100),
         nn.ReLU(),
-        nn.Linear(100, 1)
+        nn.Linear(100, 49719)
     )
