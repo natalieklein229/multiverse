@@ -108,6 +108,18 @@ try:
 except:
     model = import_module(model)
 
+NN = model.NN.to( device=DEVICE, dtype=dtype )
+
+#
+# ~~~ Load the data
+try:
+    data = import_module(f"bnns.data.{data}")   # ~~~ this is equivalent to `import bnns.data.<data> as data`
+except:
+    data = import_module(data)
+
+D_train = set_Dataset_attributes( data.D_train, device=DEVICE, dtype=dtype )
+D_test  =  set_Dataset_attributes( data.D_val, device=DEVICE, dtype=dtype )
+data_is_univariate = (D_train[0][0].numel()==1)
 
 
 
