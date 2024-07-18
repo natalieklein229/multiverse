@@ -3,11 +3,13 @@ import os
 import torch
 import pyreadr                  # ~~~ from https://stackoverflow.com/a/61699417
 import numpy as np
+from quality_of_life.my_base_utils import find_root_dir_of_repo
 from quality_of_life.my_torch_utils import convert_Tensors_to_Dataset
 
 #
 # ~~~ Set path to the .rda file
-PATH = 'slosh_dat_nj.rda'
+root = find_root_dir_of_repo()
+PATH = os.path.join( root, "bnns", "data", "slosh_dat_nj.rda" )
 if __name__ == "__main__":
     ans = input("    Is the path 'slosh_dat_nj.rda' correct?\n    Enter 'y' for yes, any other key for no.\n")
     if not ans.lower()=="y":
