@@ -55,11 +55,25 @@ def get_std(p):
 # ~~~ My version of the missing feature: a `dataset.to` method
 def set_Dataset_attributes( dataset, device, dtype ):
     try:
+        #
+        # ~~~ Directly access and modify the underlying tensors
         dataset.X = dataset.X.to( device=device, dtype=dtype )
         dataset.y = dataset.y.to( device=device, dtype=dtype )
         return dataset
     except AttributeError:
-        raise NotImplementedError # TODO
+        #
+        # ~~~ Redefine the __getattr__ method (this is hacky; I don't know a better way; also, chat-gpt proposed this)
+        class ModifiedDataset(torch.utils.data.Dataset):
+            def __init__(self,original_dataset):
+                self.original_dataset = original_dataset
+                self.device = device
+                self.dtype = dtype
+            def __getitem__(self,index):
+                x, y = self.original_dataset[index]
+                return x.to( device=self.device, dtype=self.dtype ), y.to( device=self.device, dtype=self.dtype )
+            def __len__(self,index):
+                return len(self.original_dataset)
+        return ModifiedDataset(dataset)
 
 
 ### ~~~
