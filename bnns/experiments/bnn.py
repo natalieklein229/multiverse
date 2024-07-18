@@ -7,7 +7,7 @@
 # ~~~ Standard packages
 import os
 import torch
-from torch import nn
+from torch import nn, optim
 from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 from importlib import import_module
