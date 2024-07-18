@@ -70,47 +70,44 @@ hyperparameter_template = {
     "n_posterior_samples_evaluation" : 1000 # ~~~ for computing our model evaluation metrics, posterior distributions are approximated as empirical dist.'s of this many samples
 }
 
-
-
-### ~~~
-## ~~~ Load the network architecture
-### ~~~
+#
+# ~~~ Use argparse to extract the file name from `python det_nn.py --json "my_hyperparmeters.json"` (https://stackoverflow.com/a/67731094)
+parser = argparse.ArgumentParser()
+try:
+    parser.add_argument( '--json', type=str, required=True )
+    input_json_filename = parser.parse_args().json
+    input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
+except:
+    print("")
+    print("    Hint: try `python stein.py --json demo_stein.json`")
+    print("")
+    raise
 
 #
-# ~~~ `import bnns.models.<model> as model`
+# ~~~ Load the .json file into a dictionary
+hyperparameters = json_to_dict(input_json_filename)
+
+#
+# ~~~ Load the dictionary's key/value pairs into the global namespace
+globals().update(hyperparameters)       # ~~~ e.g., if hyperparameters=={ "a":1, "B":2 }, then this defines a=1 and B=2
+
+#
+# ~~~ Might as well fix a seed, e.g., for randomly shuffling the order of batches during training
+torch.manual_seed(seed)
+
+#
+# ~~~ Handle the dtypes not writeable in .json format (e.g., if your dictionary includes the value `torch.optim.Adam` you save it as .json)
+dtype = getattr(torch,dtype)            # ~~~ e.g., "float" (str) -> torch.float (torch.dtype) 
+torch.set_default_dtype(dtype)
+Optimizer = getattr(optim,Optimizer)    # ~~~ e.g., "Adam" (str) -> optim.Adam
+
+#
+# ~~~ Load the network architecture
 try:
-    model = import_module(f"bnns.models.{model}")
+    model = import_module(f"bnns.models.{model}")   # ~~~ this is equivalent to `import bnns.models.<model> as model`
 except:
     model = import_module(model)
 
-NN = model.NN.to(DEVICE)
-
-
-
-### ~~~
-## ~~~ Load the data
-### ~~~
-
-#
-# ~~~ `import bnns.data.<data> as data`
-try:
-    data = import_module(f"bnns.data.{data}")
-except:
-    data = import_module(data)
-
-x_train, y_train, x_test, y_test = data.x_train.to(DEVICE), data.y_train.to(DEVICE), data.x_test.to(DEVICE), data.y_test.to(DEVICE)
-
-
-
-### ~~~
-## ~~~ Define some objects used for plotting
-### ~~~
-
-grid = x_test
-green_curve =  y_test.cpu().squeeze()
-x_train_cpu = x_train.cpu()
-y_train_cpu = y_train.cpu().squeeze()
-plot_predictions = plot_bnn_empirical_quantiles if visualize_bnn_using_quantiles else plot_bnn_mean_and_std
 
 
 
@@ -134,25 +131,33 @@ dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train
 
 #
 # ~~~ Some plotting stuff
-description_of_the_experiment = "Stein Neural Network Ensemble"
-def plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, title=description_of_the_experiment ):
+if data_is_univariate:
     #
-    # ~~~ Draw from the posterior predictive distribuion
-    with torch.no_grad():
-        predictions = ensemble(grid)
-        if predictions_include_conditional_std:
-            predictions += ensemble.conditional_std * torch.randn_like(predictions)
-    return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
-
-
-#
-# ~~~ Plot the state of the posterior predictive distribution upon its initialization
-if make_gif:
-    gif = GifMaker()      # ~~~ essentially just a list of images
-    fig,ax = plt.subplots(figsize=(12,6))
-    fig,ax = plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble )
-    for j in range(initial_frame_repetitions):
-        gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
+    # ~~~ Define some objects used for plotting
+    description_of_the_experiment = "Stein Neural Network Ensemble"
+    grid = data.x_test.to( device=DEVICE, dtype=dtype )
+    green_curve =  data.y_test.cpu().squeeze()
+    x_train_cpu = data.x_train.cpu()
+    y_train_cpu = data.y_train.cpu().squeeze()
+    #
+    # ~~~ Define the main plotting routine
+    plot_predictions = plot_bnn_empirical_quantiles if visualize_bnn_using_quantiles else plot_bnn_mean_and_std
+    def plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, title=description_of_the_experiment ):
+        #
+        # ~~~ Draw from the posterior predictive distribuion
+        with torch.no_grad():
+            predictions = ensemble(grid)
+            if predictions_include_conditional_std:
+                predictions += ensemble.conditional_std * torch.randn_like(predictions)
+        return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
+    #
+    # ~~~ Plot the state of the posterior predictive distribution upon its initialization
+    if make_gif:
+        gif = GifMaker()      # ~~~ essentially just a list of images
+        fig,ax = plt.subplots(figsize=(12,6))
+        fig,ax = plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble )
+        for j in range(initial_frame_repetitions):
+            gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
 #
 # ~~~ Do the actual training loop
@@ -176,23 +181,20 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
 
 #
 # ~~~ Plot the state of the posterior predictive distribution at the end of training
-if not make_gif:    # ~~~ make a plot now
-    fig,ax = plt.subplots(figsize=(12,6))
+if data_is_univariate:
+    if not make_gif:    # ~~~ make a plot now
+        fig,ax = plt.subplots(figsize=(12,6))
+    fig,ax = plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble )
+    if make_gif:
+        for j in range(final_frame_repetitions):
+            gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
+        gif.develop( destination=description_of_the_experiment, fps=24 )
+    else:
+        plt.show()
 
-fig,ax = plot_esnsemble( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, ensemble )
-
-if make_gif:
-    for j in range(final_frame_repetitions):
-        gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
-    gif.develop( destination=description_of_the_experiment, fps=24 )
-else:
-    plt.show()
-
-
-
-# ### ~~~
-# ## ~~~ Diagnostics
-# ### ~~~
+### ~~~
+## ~~~ Debugging diagnostics
+### ~~~
 
 # def plot( metric, window_size=n_epochs/50 ):
 #     plt.plot( moving_average(history[metric],int(window_size)) )
@@ -200,4 +202,24 @@ else:
 #     plt.tight_layout()
 #     plt.show()
 
-# #
+
+
+### ~~~
+## ~~~ Evaluate the trained model
+### ~~~
+
+hyperparameters["metric"] = "here, we will record metrics"
+
+
+
+### ~~~
+## ~~~ Save the results
+### ~~~
+
+if input_json_filename.startswith("demo"):
+    my_warn(f'Results are not saved when the hyperparameter json filename starts with "demo" (in this case `{input_json_filename}`)')
+else:
+    output_json_filename = generate_json_filename()
+    dict_to_json( hyperparameters, output_json_filename )
+
+#
