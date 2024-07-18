@@ -139,7 +139,7 @@ ensemble = Ensemble(
 
 #
 # ~~~ The dataloader
-dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train,y_train), batch_size=batch_size )
+dataloader = torch.utils.data.DataLoader( D_train, batch_size=batch_size )
 
 #
 # ~~~ Some plotting stuff
