@@ -135,7 +135,7 @@ data_is_univariate = (D_train[0][0].numel()==1)
 
 #
 # ~~~ The optimizer and dataloader
-dataloader = torch.utils.data.DataLoader( torch.utils.data.TensorDataset(x_train,y_train), batch_size=batch_size )
+dataloader = torch.utils.data.DataLoader( D_train, batch_size=batch_size )
 mean_optimizer = Optimizer( BNN.model_mean.parameters(), lr=lr )
 std_optimizer  =  Optimizer( BNN.model_std.parameters(), lr=lr )
 
