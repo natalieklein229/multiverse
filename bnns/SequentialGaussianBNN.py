@@ -49,12 +49,12 @@ class SequentialGaussianBNN(nn.Module):
         self.conditional_std = torch.tensor(0.001)
         #
         # ~~~ NEW attributes for SSGE and functional training
-        self.prior_J   = 10
-        self.post_J    = 10
-        self.prior_eta = 10
-        self.post_eta  = 10
-        self.prior_M   = 50
-        self.post_M    = 50
+        self.prior_J   = "please specify"
+        self.post_J    = "please specify"
+        self.prior_eta = "please specify"
+        self.post_eta  = "please specify"
+        self.prior_M   = "please specify"
+        self.post_M    = "please specify"
         self.measurement_set = None
         self.prior_SSGE      = None
         self.use_eigh        = True

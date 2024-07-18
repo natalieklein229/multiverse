@@ -28,100 +28,103 @@ from quality_of_life.my_base_utils          import support_for_progress_bars, di
 
 
 ### ~~~
-## ~~~ Config
+## ~~~ Config/setup
 ### ~~~
 
 #
-# ~~~ Misc.
-DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
-torch.manual_seed(2024)
-torch.set_default_dtype(torch.float)    # ~~~ note: why doesn't torch.double work?
+# ~~~ Template for what the dictionary of hyperparmeters should look like
+hyperparameter_template = {
+    #
+    # ~~~ Misc.
+    "DEVICE" : "cpu",
+    "dtype" : "float",
+    "seed" : 2024,
+    #
+    # ~~~ Which problem
+    "data" : "univar_missing_middle",
+    "model" : "univar_BNN",
+    #
+    # ~~~ For training
+    "functional" : False,   # ~~~ whether or to do functional training or (if False) BBB
+    "n_MC_samples" : 20,    # ~~~ expectations (in the variational loss) are estimated as an average of this many Monte-Carlo samples
+    "project" : True,       # ~~~ if True, use projected gradient descent; else use the weird thing from the paper
+    "projection_tol" : 1e-6,# ~~~ for numerical reasons, project onto [projection_tol,Inf), rather than onto [0,Inft)
+    "prior_J"   : 100,      # ~~~ `J` in the SSGE of the prior score
+    "post_J"    : 10,       # ~~~ `J` in the SSGE of the posterior score
+    "prior_eta" : 0.5,      # ~~~ `eta` in the SSGE of the prior score
+    "post_eta"  : 0.5,      # ~~~ `eta` in the SSGE of the posterior score
+    "prior_M"   : 4000,     # ~~~ `M` in the SSGE of the prior score
+    "post_M"    : 40,       # ~~~ `M` in the SSGE of the posterior score
+    "Optimizer" : "Adam",
+    "lr" : 0.0005,
+    "batch_size" : 64,
+    "n_epochs" : 200,
+    #
+    # ~~~ For visualization (only applicable on 1d data)
+    "make_gif" : True,
+    "how_often" : 10,                       # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
+    "initial_frame_repetitions" : 24,       # ~~~ for how many frames should the state of initialization be rendered
+    "final_frame_repetitions" : 48,         # ~~~ for how many frames should the state after training be rendered
+    "how_many_individual_predictions" : 6,  # ~~~ how many posterior predictive samples to plot
+    "visualize_bnn_using_quantiles" : True, # ~~~ if False, use mean +/- two standard deviatiations; if True, use empirical median and 95% quantile
+    "conditional_std" : 0.19,
+    "extra_std" : True,
+    "n_posterior_samples" : 100,            # ~~~ for plotting, posterior distributions are approximated as empirical dist.'s of this many samples
+    #
+    # ~~~ For metrics
+    "n_posterior_samples_evaluation" = 100  # ~~~ for computing our model evaluation metrics, posterior distributions are approximated as empirical dist.'s of this many samples
+}
 
 #
-# ~~~ Regarding the training method
-functional = False
-Optimizer = torch.optim.Adam
-batch_size = 64
-lr = 0.0005
-n_epochs = 200
-n_posterior_samples = 100   # ~~~ posterior distributions are approximated as empirical dist.'s of this many samples
-n_MC_samples = 20           # ~~~ expectations are estimated as an average of this many Monte-Carlo samples
-project = True              # ~~~ if True, use projected gradient descent; else use the weird thing from the paper
-projection_tol = 1e-6       # ~~~ for numerical reasons, project onto [projection_tol,Inf), rather than onto [0,Inft)
-
-#
-# ~~~ Regarding the SSGE
-M = 50          # ~~~ M in SSGE
-J = 10          # ~~~ J in SSGE
-eta = 0.0001    # ~~~ stability term added to the SSGE's RBF kernel
-
-#
-# ~~~ Regarding visualizaing of training
-make_gif = True         # ~~~ if true, aa .gif is made (even if false, the function is still plotted)
-how_often = 10          # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
-initial_frame_repetitions = 24  # ~~~ for how many frames should the state of initialization be rendered
-final_frame_repetitions = 48    # ~~~ for how many frames should the state after training be rendered
-plot_indivitual_NNs = False     # ~~~ if True, do *not* plot confidence intervals and, instead, plot only a few sampled nets
-visualize_bnn_using_quantiles = False
-how_many_individual_predictions = 6
-
-#
-# ~~~ Regarding the likelihood model
-conditional_std = 0.19
-
-#
-# ~~~ Regarding the predictions
-extra_std = False               # ~~~ if True, add the conditional std. when plotting the +/- 2 standard deviation bars
-
-#
-# ~~~ Regarding the data
-data = "univar_missing_middle"
-
-#
-# ~~~ Regarding the model
-model = "univar_BNN"
-
-
-
-### ~~~
-## ~~~ Load the network architecture
-### ~~~
-
-#
-# ~~~ `import bnns.models.<model> as model`
+# ~~~ Use argparse to extract the file name from `python det_nn.py --json "my_hyperparmeters.json"` (https://stackoverflow.com/a/67731094)
+parser = argparse.ArgumentParser()
 try:
-    model = import_module(f"bnns.models.{model}")
+    parser.add_argument( '--json', type=str, required=True )
+    input_json_filename = parser.parse_args().json
+    input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
+except:
+    print("")
+    print("    Hint: try `python det_nn.py --json demo_det_nn.json`")
+    print("")
+    raise
+
+#
+# ~~~ Load the .json file into a dictionary
+hyperparameters = json_to_dict(input_json_filename)
+
+#
+# ~~~ Load the dictionary's key/value pairs into the global namespace
+globals().update(hyperparameters)       # ~~~ e.g., if hyperparameters=={ "a":1, "B":2 }, then this defines a=1 and B=2
+
+#
+# ~~~ Might as well fix a seed, e.g., for randomly shuffling the order of batches during training
+torch.manual_seed(seed)
+
+#
+# ~~~ Handle the dtypes not writeable in .json format (e.g., if your dictionary includes the value `torch.optim.Adam` you save it as .json)
+dtype = getattr(torch,dtype)            # ~~~ e.g., "float" (str) -> torch.float (torch.dtype) 
+torch.set_default_dtype(dtype)
+Optimizer = getattr(optim,Optimizer)    # ~~~ e.g., "Adam" (str) -> optim.Adam
+
+#
+# ~~~ Load the network architecture
+try:
+    model = import_module(f"bnns.models.{model}")   # ~~~ this is equivalent to `import bnns.models.<model> as model`
 except:
     model = import_module(model)
 
-BNN = model.BNN.to(DEVICE)
-
-
-
-### ~~~
-## ~~~ Load the data
-### ~~~
+NN = model.NN.to( device=DEVICE, dtype=dtype )
 
 #
-# ~~~ `import bnns.data.<data> as data`
+# ~~~ Load the data
 try:
-    data = import_module(f"bnns.data.{data}")
+    data = import_module(f"bnns.data.{data}")   # ~~~ this is equivalent to `import bnns.data.<data> as data`
 except:
     data = import_module(data)
 
-x_train, y_train, x_test, y_test = data.x_train.to(DEVICE), data.y_train.to(DEVICE), data.x_test.to(DEVICE), data.y_test.to(DEVICE)
-
-
-
-### ~~~
-## ~~~ Define some objects used for plotting
-### ~~~
-
-grid = x_test
-green_curve =  y_test.cpu().squeeze()
-x_train_cpu = x_train.cpu()
-y_train_cpu = y_train.cpu().squeeze()
-plot_predictions = plot_bnn_empirical_quantiles if visualize_bnn_using_quantiles else plot_bnn_mean_and_std
+D_train = set_Dataset_attributes( data.D_train, device=DEVICE, dtype=dtype )
+D_test  =  set_Dataset_attributes( data.D_val, device=DEVICE, dtype=dtype )
+data_is_univariate = (D_train[0][0].numel()==1)
 
 
 
@@ -141,28 +144,37 @@ BNN.conditional_std = torch.sqrt(((NN(x_train)-y_train)**2).mean()) if condition
 
 #
 # ~~~ Some plotting stuff
-description_of_the_experiment = "fBNN" if functional else "BBB"
-def plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, bnn, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, n_posterior_samples=n_posterior_samples, title=description_of_the_experiment, prior=False ):
+if data_is_univariate:
     #
-    # ~~~ Draw from the posterior predictive distribuion
-    with torch.no_grad():
-        forward = bnn.prior_forward if prior else bnn
-        predictions = torch.column_stack([ forward(grid,resample_weights=True) for _ in range(n_posterior_samples) ])
-        if predictions_include_conditional_std:
-            predictions += bnn.conditional_std * torch.randn_like(predictions)
-    return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
+    # ~~~ Define some objects used for plotting
+    description_of_the_experiment = "fBNN" if functional else "BBB"
+    grid = data.x_test.to( device=DEVICE, dtype=dtype )
+    green_curve =  data.y_test.cpu().squeeze()
+    x_train_cpu = data.x_train.cpu()
+    y_train_cpu = data.y_train.cpu().squeeze()
+    #
+    # ~~~ Define the main plotting routine
+    plot_bnn = plot_bnn_empirical_quantiles if visualize_bnn_using_quantiles else plot_bnn_mean_and_std
+    def plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, bnn, predictions_include_conditional_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, n_posterior_samples=n_posterior_samples, title=description_of_the_experiment, prior=False ):
+        #
+        # ~~~ Draw from the posterior predictive distribuion
+        with torch.no_grad():
+            forward = bnn.prior_forward if prior else bnn
+            predictions = torch.column_stack([ forward(grid,resample_weights=True) for _ in range(n_posterior_samples) ])
+            if predictions_include_conditional_std:
+                predictions += bnn.conditional_std * torch.randn_like(predictions)
+        return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
+    #
+    # ~~~ Plot the state of the posterior predictive distribution upon its initialization
+    if make_gif:
+        gif = GifMaker()      # ~~~ essentially just a list of images
+        fig,ax = plt.subplots(figsize=(12,6))
+        fig,ax = plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, BNN, prior=True )
+        for j in range(initial_frame_repetitions):
+            gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
 #
-# ~~~ Plot the state of the posterior predictive distribution upon its initialization
-if make_gif:
-    gif = GifMaker()      # ~~~ essentially just a list of images
-    fig,ax = plt.subplots(figsize=(12,6))
-    fig,ax = plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, BNN, prior=True )
-    for j in range(initial_frame_repetitions):
-        gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
-
-#
-# ~~~ Do Bayesian training
+# ~~~ Define some objects for recording the hisorty of training
 metrics = ( "ELBO", "post", "prior", "like" )
 history = {}
 for metric in metrics:
@@ -182,8 +194,8 @@ if project:
 # ~~~ Define the measurement set for functional training
 BNN.measurement_set = x_train
 
-
-# torch.autograd.set_detect_anomaly(True)
+#
+# ~~~ Start the training loop
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
     pbar = tqdm( desc=description_of_the_experiment, total=n_epochs*len(dataloader), ascii=' >=' )
     for e in range(n_epochs):
@@ -234,25 +246,25 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
             _ = pbar.update()
         #
         # ~~~ Plotting logic
-        if make_gif and n_posterior_samples>0 and (e+1)%how_often==0:
+        if data_is_univariate and make_gif and (e+1)%how_often==0:
             fig,ax = plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, BNN )
             gif.capture()
             # print("captured")
 
-#
-# ~~~ Plot the state of the posterior predictive distribution at the end of training
-if make_gif:
-    for j in range(final_frame_repetitions):
-        gif.frames.append( gif.frames[-1] )
-    gif.develop( destination=description_of_the_experiment, fps=24 )
-    plt.close()
-else:
-    fig,ax = plt.subplots(figsize=(12,6))
-    fig,ax = plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, BNN )
-    plt.show()
-
 pbar.close()
 
+#
+# ~~~ Plot the state of the posterior predictive distribution at the end of training
+if data_is_univariate:
+    if make_gif:
+        for j in range(final_frame_repetitions):
+            gif.frames.append( gif.frames[-1] )
+        gif.develop( destination=description_of_the_experiment, fps=24 )
+        plt.close()
+    else:
+        fig,ax = plt.subplots(figsize=(12,6))
+        fig,ax = plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, BNN )
+        plt.show()
 
 
 # ### ~~~
