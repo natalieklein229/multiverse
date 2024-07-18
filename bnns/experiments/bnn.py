@@ -270,9 +270,9 @@ if data_is_univariate:
         plt.show()
 
 
-# ### ~~~
-# ## ~~~ Diagnostics
-# ### ~~~
+### ~~~
+## ~~~ Debugging diagnostics
+### ~~~
 
 # def plot( metric, window_size=n_epochs/50 ):
 #     plt.plot( moving_average(history[metric],int(window_size)) )
@@ -280,4 +280,24 @@ if data_is_univariate:
 #     plt.tight_layout()
 #     plt.show()
 
-# #
+
+
+### ~~~
+## ~~~ Evaluate the trained model
+### ~~~
+
+hyperparameters["metric"] = "here, we will record metrics"
+
+
+
+### ~~~
+## ~~~ Save the results
+### ~~~
+
+if input_json_filename.startswith("demo"):
+    my_warn(f'Results are not saved when the hyperparameter json filename starts with "demo" (in this case `{input_json_filename}`)')
+else:
+    output_json_filename = generate_json_filename()
+    dict_to_json( hyperparameters, output_json_filename )
+
+#
