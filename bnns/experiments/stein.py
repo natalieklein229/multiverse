@@ -45,7 +45,7 @@ hyperparameter_template = {
     #
     # ~~~ Which problem
     "data" : "univar_missing_middle",
-    "model" : "univar_BNN",
+    "model" : "univar_NN",
     #
     # ~~~ For training
     "conditional_std" : 0.19,
