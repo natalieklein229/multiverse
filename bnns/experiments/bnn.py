@@ -11,6 +11,7 @@ from torch import nn
 from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 from importlib import import_module
+import argparse
 
 #
 # ~~~ The guts of the model
@@ -84,7 +85,7 @@ try:
     input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
 except:
     print("")
-    print("    Hint: try `python det_nn.py --json demo_det_nn.json`")
+    print("    Hint: try `python bnn.py --json demo_bnn.json`")
     print("")
     raise
 
