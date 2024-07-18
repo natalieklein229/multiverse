@@ -55,7 +55,7 @@ try:
     input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
 except:
     print("")
-    print("    Hint: try `python det_nn.py --json demo_det_nn.json")
+    print("    Hint: try `python det_nn.py --json demo_det_nn.json`")
     print("")
     raise
 
