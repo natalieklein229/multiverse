@@ -5,7 +5,6 @@
 
 #
 # ~~~ Standard packages
-import os
 import torch
 from torch import nn, optim
 from tqdm import tqdm, trange
@@ -65,18 +64,22 @@ hyperparameters = json_to_dict(input_json_filename)
 
 #
 # ~~~ Load the dictionary's key/value pairs into the global namespace
-globals().update(hyperparameters)         # ~~~ e.g., if hyperparameters=={ "a":1, "B":2 }, then this defines a=1 and B=2
+globals().update(hyperparameters)       # ~~~ e.g., if hyperparameters=={ "a":1, "B":2 }, then this defines a=1 and B=2
+
+#
+# ~~~ Might as well fix a seed, e.g., for randomly shuffling the order of batches during training
+torch.manual_seed(seed)
 
 #
 # ~~~ Handle the dtypes not writeable in .json format (e.g., if your dictionary includes the value `torch.optim.Adam` you save it as .json)
-dtype = getattr(torch,dtype)                    # ~~~ e.g., "float" (str) -> torch.float (torch.dtype) 
+dtype = getattr(torch,dtype)            # ~~~ e.g., "float" (str) -> torch.float (torch.dtype) 
 torch.set_default_dtype(dtype)
-Optimizer = getattr(optim,Optimizer)            # ~~~ e.g., "Adam" (str) -> optim.Adam
+Optimizer = getattr(optim,Optimizer)    # ~~~ e.g., "Adam" (str) -> optim.Adam
 
 #
 # ~~~ Load the network architecture
 try:
-    model = import_module(f"bnns.models.{model}")   # ~~~ `import bnns.models.<model> as model`
+    model = import_module(f"bnns.models.{model}")   # ~~~ this is equivalent to `import bnns.models.<model> as model`
 except:
     model = import_module(model)
 
@@ -85,7 +88,7 @@ NN = model.NN.to( device=DEVICE, dtype=dtype )
 #
 # ~~~ Load the data
 try:
-    data = import_module(f"bnns.data.{data}")   # ~~~ `import bnns.data.<data> as data`
+    data = import_module(f"bnns.data.{data}")   # ~~~ this is equivalent to `import bnns.data.<data> as data`
 except:
     data = import_module(data)
 
