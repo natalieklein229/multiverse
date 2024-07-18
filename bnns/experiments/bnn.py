@@ -18,7 +18,7 @@ import argparse
 from bnns.SequentialGaussianBNN import SequentialGaussianBNN
 #
 # ~~~ Package-specific utils
-from bnns.utils import plot_bnn_mean_and_std, plot_bnn_empirical_quantiles, set_Dataset_attributes, generate_json_filename
+from bnns.utils import plot_bnn_mean_and_std, plot_bnn_empirical_quantiles, set_Dataset_attributes, generate_json_filename, my_warn
 from quality_of_life.my_torch_utils import convert_Dataset_to_Tensors
 
 #
