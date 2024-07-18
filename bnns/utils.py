@@ -188,6 +188,7 @@ def two_standard_deviations( predictions, grid, ax, predictions_include_conditio
     #
     # ~~~ Optionally, also graph several of the actual sample NN's as more blue curves (label only the last one)
     if how_many_individual_predictions>0:
+        n_posterior_samples = predictions.shape[-1]
         which_NNs = (np.linspace( 1, n_posterior_samples, min(n_posterior_samples,how_many_individual_predictions), dtype=np.int32 ) - 1).tolist()
         for j in which_NNs:
             if j==max(which_NNs):
@@ -240,6 +241,7 @@ def empirical_quantile( predictions, grid, ax, predictions_include_conditional_s
     #
     # ~~~ Optionally, also graph several of the actual sample NN's as more blue curves (label only the last one)
     if how_many_individual_predictions>0:
+        n_posterior_samples = predictions.shape[-1]
         which_NNs = (np.linspace( 1, n_posterior_samples, min(n_posterior_samples,how_many_individual_predictions), dtype=np.int32 ) - 1).tolist()
         for j in which_NNs:
             if j==max(which_NNs):
