@@ -32,13 +32,21 @@ from quality_of_life.my_torch_utils import convert_Dataset_to_Tensors
 #
 # ~~~ Template for what the dictionary of hyperparmeters should look like
 hyperparameter_template = {
+    #
+    # ~~~ Misc.
     "DEVICE" : "cpu",
     "dtype" : "float",
     "seed" : 2024,
+    #
+    # ~~~ Which problem
     "data" : "univar_missing_middle",
+    #
+    # ~~~ For training
     "conditional_std" : 0.19,
     "bw" : 0.1,
-    "extra_std" : True
+        #
+    # ~~~ For metrics and visualization
+    "extra_std" : True,
 }
 
 #

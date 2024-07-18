@@ -30,52 +30,45 @@ from quality_of_life.my_base_utils          import support_for_progress_bars, di
 
 
 ### ~~~
-## ~~~ Config
+## ~~~ Config/setup
 ### ~~~
 
 #
-# ~~~ Misc.
-DEVICE  = "cuda" if torch.cuda.is_available() else "cpu"
-torch.manual_seed(2024)
-torch.set_default_dtype(torch.float)    # ~~~ note: why doesn't torch.double work?
+# ~~~ Template for what the dictionary of hyperparmeters should look like
 
-#
-# ~~~ Regarding the training method
-Optimizer = torch.optim.Adam
-batch_size = 64
-lr = 0.0005
-n_epochs = 200
-
-#
-# ~~~ Regarding Stein GD
-n_Stein_particles = 100
-n_Stein_iterations = 200
-
-#
-# ~~~ Regarding visualizaing of training
-make_gif = True         # ~~~ if true, aa .gif is made (even if false, the function is still plotted)
-how_often = 10          # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
-initial_frame_repetitions = 24  # ~~~ for how many frames should the state of initialization be rendered
-final_frame_repetitions = 48    # ~~~ for how many frames should the state after training be rendered
-plot_indivitual_NNs = False     # ~~~ if True, do *not* plot confidence intervals and, instead, plot only a few sampled nets
-visualize_bnn_using_quantiles = False
-how_many_individual_predictions = 6
-
-#
-# ~~~ Regarding the likelihood model
-conditional_std = 0.19
-
-#
-# ~~~ Regarding the predictions
-extra_std = False               # ~~~ if True, add the conditional std. when plotting the +/- 2 standard deviation bars
-
-#
-# ~~~ Regarding the data
-data = "univar_missing_middle"
-
-#
-# ~~~ Regarding the model
-model = "univar_NN"
+hyperparameter_template = {
+    #
+    # ~~~ Misc.
+    "DEVICE" : "cpu",
+    "dtype" : "float",
+    "seed" : 2024,
+    #
+    # ~~~ Which problem
+    "data" : "univar_missing_middle",
+    "model" : "univar_BNN",
+    #
+    # ~~~ For training
+    "conditional_std" : 0.19,
+    "bw" : None,
+    "n_Stein_particles" : 100,
+    "Optimizer" : "Adam",
+    "lr" : 0.0005,
+    "batch_size" : 64,
+    "n_epochs" : 200,
+    #
+    # ~~~ For visualization (only applicable on 1d data)
+    "make_gif" : True,
+    "how_often" : 10,                       # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
+    "initial_frame_repetitions" : 24,       # ~~~ for how many frames should the state of initialization be rendered
+    "final_frame_repetitions" : 48,         # ~~~ for how many frames should the state after training be rendered
+    "how_many_individual_predictions" : 6,  # ~~~ how many posterior predictive samples to plot
+    "visualize_bnn_using_quantiles" : True, # ~~~ if False, use mean +/- two standard deviatiations; if True, use empirical median and 95% quantile
+    "n_posterior_samples" : 100,            # ~~~ for plotting, posterior distributions are approximated as empirical dist.'s of this many samples
+    #
+    # ~~~ For metrics and visualization
+    "extra_std" : True,
+    "n_posterior_samples_evaluation" : 1000 # ~~~ for computing our model evaluation metrics, posterior distributions are approximated as empirical dist.'s of this many samples
+}
 
 
 
@@ -127,14 +120,12 @@ plot_predictions = plot_bnn_empirical_quantiles if visualize_bnn_using_quantiles
 
 #
 # ~~~ Instantiate an ensemble
-with torch.no_grad():
-    conditional_std = torch.sqrt(((NN(x_train)-y_train)**2).mean()) if conditional_std=="auto" else torch.tensor(conditional_std)
-
 ensemble = Ensemble(
         architecture = nonredundant_copy_of_module_list(NN),
         n_copies = n_Stein_particles,
         Optimizer = lambda params: Optimizer( params, lr=lr ),
-        conditional_std = conditional_std
+        conditional_std = torch.tensor(conditional_std),
+        bw = bw
     )
 
 #

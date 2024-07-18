@@ -56,6 +56,7 @@ hyperparameter_template = {
     "post_eta"  : 0.5,      # ~~~ `eta` in the SSGE of the posterior score
     "prior_M"   : 4000,     # ~~~ `M` in the SSGE of the prior score
     "post_M"    : 40,       # ~~~ `M` in the SSGE of the posterior score
+    "conditional_std" : 0.19,
     "Optimizer" : "Adam",
     "lr" : 0.0005,
     "batch_size" : 64,
@@ -68,11 +69,10 @@ hyperparameter_template = {
     "final_frame_repetitions" : 48,         # ~~~ for how many frames should the state after training be rendered
     "how_many_individual_predictions" : 6,  # ~~~ how many posterior predictive samples to plot
     "visualize_bnn_using_quantiles" : True, # ~~~ if False, use mean +/- two standard deviatiations; if True, use empirical median and 95% quantile
-    "conditional_std" : 0.19,
-    "extra_std" : True,
     "n_posterior_samples" : 100,            # ~~~ for plotting, posterior distributions are approximated as empirical dist.'s of this many samples
     #
-    # ~~~ For metrics
+    # ~~~ For metrics and visualization
+    "extra_std" : True,
     "n_posterior_samples_evaluation" : 1000 # ~~~ for computing our model evaluation metrics, posterior distributions are approximated as empirical dist.'s of this many samples
 }
 
