@@ -114,7 +114,7 @@ try:
 except:
     model = import_module(model)
 
-NN = model.NN.to( device=DEVICE, dtype=dtype )
+BNN = model.BNN.to( device=DEVICE, dtype=dtype )
 
 #
 # ~~~ Load the data
