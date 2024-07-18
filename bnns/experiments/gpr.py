@@ -21,6 +21,7 @@ from bnns.utils import plot_gpr, set_Dataset_attributes
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
 from quality_of_life.my_base_utils import support_for_progress_bars, dict_to_json, json_to_dict, my_warn
+from quality_of_life.my_torch_utils import convert_Dataset_to_Tensors
 
 
 
