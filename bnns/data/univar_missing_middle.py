@@ -24,7 +24,7 @@ y_test = f(x_test)
 #
 # ~~~ Synthetic (noisy) validation data
 x_val = 2*torch.rand( size=(n_val,) )**2 - 1        # ~~~ uniformly random points in [-1,1]
-x_val = x_val.sign() * x_train.abs()**(1/6)         # ~~~ push it away from zero
+x_val = x_val.sign() * x_val.abs()**(1/6)         # ~~~ push it away from zero
 y_val = f(x_val) + noise*torch.randn( size=(n_val,) )
 
 #
