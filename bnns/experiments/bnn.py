@@ -19,6 +19,7 @@ from bnns.SequentialGaussianBNN import SequentialGaussianBNN
 #
 # ~~~ Package-specific utils
 from bnns.utils import plot_bnn_mean_and_std, plot_bnn_empirical_quantiles, set_Dataset_attributes
+from quality_of_life.my_torch_utils import convert_Dataset_to_Tensors
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
@@ -141,7 +142,7 @@ std_optimizer  =  Optimizer( BNN.model_std.parameters(), lr=lr )
 
 #
 # ~~~ Specify, now, the assumed conditional variance for the likelihood function (i.e., for the theoretical data-generating proces)
-BNN.conditional_std = torch.sqrt(((NN(x_train)-y_train)**2).mean()) if conditional_std=="auto" else torch.tensor(conditional_std)
+BNN.conditional_std = torch.tensor(conditional_std)
 
 #
 # ~~~ Some plotting stuff
@@ -193,6 +194,7 @@ if project:
 
 #
 # ~~~ Define the measurement set for functional training
+x_train, _ = convert_Dataset_to_Tensors(D_train)
 BNN.measurement_set = x_train
 
 #
