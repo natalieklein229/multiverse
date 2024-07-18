@@ -17,14 +17,14 @@ import argparse
 from bnns.SequentialGaussianBNN import SequentialGaussianBNN
 #
 # ~~~ Package-specific utils
-from bnns.utils import plot_bnn_mean_and_std, plot_bnn_empirical_quantiles, set_Dataset_attributes, generate_json_filename, my_warn
+from bnns.utils import plot_bnn_mean_and_std, plot_bnn_empirical_quantiles, set_Dataset_attributes, generate_json_filename
 from quality_of_life.my_torch_utils import convert_Dataset_to_Tensors
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
 from quality_of_life.my_visualization_utils import GifMaker
 from quality_of_life.my_numpy_utils         import moving_average
-from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict
+from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict, my_warn
 
 
 
