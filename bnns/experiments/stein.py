@@ -143,10 +143,10 @@ dataloader = torch.utils.data.DataLoader( D_train, batch_size=batch_size )
 
 #
 # ~~~ Some plotting stuff
+description_of_the_experiment = "Stein Neural Network Ensemble"
 if data_is_univariate:
     #
     # ~~~ Define some objects used for plotting
-    description_of_the_experiment = "Stein Neural Network Ensemble"
     grid = data.x_test.to( device=DEVICE, dtype=dtype )
     green_curve =  data.y_test.cpu().squeeze()
     x_train_cpu = data.x_train.cpu()
@@ -175,7 +175,7 @@ if data_is_univariate:
 # ~~~ Do the actual training loop
 K_history, grads_of_K_history = [], []
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
-    for e in trange( n_epochs, ascii=' >=', desc="Stein Enemble" ):
+    for e in trange( n_epochs, ascii=' >=', desc=description_of_the_experiment ):
         #
         # ~~~ Training logic
         for X, y in dataloader:

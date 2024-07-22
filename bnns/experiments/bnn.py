@@ -148,10 +148,10 @@ std_optimizer  =  Optimizer( BNN.model_std.parameters(), lr=lr )
 
 #
 # ~~~ Some plotting stuff
+description_of_the_experiment = "fBNN" if functional else "BBB"
 if data_is_univariate:
     #
     # ~~~ Define some objects used for plotting
-    description_of_the_experiment = "fBNN" if functional else "BBB"
     grid = data.x_test.to( device=DEVICE, dtype=dtype )
     green_curve =  data.y_test.cpu().squeeze()
     x_train_cpu = data.x_train.cpu()
