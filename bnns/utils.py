@@ -245,7 +245,7 @@ def plot_bnn_mean_and_std(
 def empirical_quantile( predictions, grid, ax, extra_std, alpha=0.2, how_many_individual_predictions=6, **kwargs ):
     #
     # ~~~ Extract summary stats from `predictions` assuming that each *column* of `predictions` is a sample from the posterior predictive distribution
-    lo,med,hi = ( predictions + extra_std*randn_like*(predictions) ).quantile( q=torch.Tensor([0.05,0.5,0.95]), dim=-1 )
+    lo,med,hi = ( predictions + extra_std*torch.randn_like*(predictions) ).quantile( q=torch.Tensor([0.05,0.5,0.95]), dim=-1 )
     #
     # ~~~ Graph the median as a blue curve
     _, = ax.plot( grid.cpu(), med.cpu(), label="Posterior Predictive Median", linestyle="-", linewidth=( 0.7 if how_many_individual_predictions>0 else 0.5 ), color="blue" )
