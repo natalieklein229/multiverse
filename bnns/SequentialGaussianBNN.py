@@ -60,12 +60,6 @@ class SequentialGaussianBNN(nn.Module):
         self.measurement_set = None
         self.prior_SSGE      = None
         self.use_eigh        = True
-        #
-        # ~~~ A callable GP prior
-        self.GP_prior = lambda x : (
-                torch.zeros_like(x),
-                kernel_matrix( x.unsqueeze(-1), x.unsqueeze(-1) , 0.1 ) + 0.0001*torch.ones_like(x).diag()
-            )
     #
     # ~~~ Sample according to a "standard normal distribution in the shape of our neural network"
     def sample_from_standard_normal(self):
@@ -207,6 +201,12 @@ class SequentialGaussianBNN(nn.Module):
         log_prior_density      =  (prior_score_at_yhat @ yhat).squeeze()      # ~~~ the inner product from the chain rule            
         return log_posterior_density, log_prior_density
     #
+    # ~~~ A callable GP prior
+    def GP_prior(self,x):
+        if not hasattr(self,"K0inv"):
+            self.K0inv = kernel_matrix( x.unsqueeze(-1), x.unsqueeze(-1) , 0.1 ) + 0.0001*torch.ones_like(x).diag()
+        return torch.zeros_like(x), self.K0inv
+    #
     # ~~~ Compute the mean and standard deviation of a normal distribution approximating q_theta
     def simple_gaussian_approximation( self, resample_measurement_set=True ):
         #
@@ -244,12 +244,12 @@ class SequentialGaussianBNN(nn.Module):
     #
     # ~~~ Compute the mean and standard deviation of a normal distribution approximating q_theta
     def gaussian_kl( self, mu_theta=None, Sigma_theta=None, resample_measurement_set=True, add_stabilizing_noise=False ):
+        mu_0, Sigma_0_inv = self.GP_prior(self.measurement_set)
         if mu_theta is None and Sigma_theta is None:
             mu_theta, Sigma_theta = self.simple_gaussian_approximation( resample_measurement_set=resample_measurement_set )
-        mu_0, Sigma_0 = self.GP_prior(self.measurement_set)
         if add_stabilizing_noise:
             Sigma_theta += torch.diag( self.conditional_std*torch.ones_like(Sigma_theta.diag()) )
-        return gaussian_kl( mu_theta, torch.linalg.cholesky(Sigma_theta), mu_0, torch.linalg.cholesky(Sigma_0) )
+        return gaussian_kl( mu_theta, torch.linalg.cholesky(Sigma_theta), mu_0, torch.linalg.cholesky(Sigma_0_inv) )
     #
     # ~~~ A helper function that samples a bunch from the predicted posterior distribution
     def posterior_predicted_mean_and_std( self, x_test, n_samples ):
