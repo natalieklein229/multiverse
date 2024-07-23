@@ -242,7 +242,7 @@ class SequentialGaussianBNN(nn.Module):
     # ~~~ Compute the mean and standard deviation of a normal distribution approximating q_theta
     def gaussian_kl( self, mu_theta=None, Sigma_theta=None, resample_measurement_set=True ):
         if mu_theta is None and Sigma_theta is None:
-            mu_theta, Sigma_theta = self.simple_gaussian_approximation( self, resample_measurement_set=resample_measurement_set )
+            mu_theta, Sigma_theta = self.simple_gaussian_approximation( resample_measurement_set=resample_measurement_set )
         mu_0, Sigma_0 = self.GP_prior(self.measurement_set)
         return gaussian_kl( mu_theta, torch.linalg.cholesky(Sigma_theta), mu_0, torch.linalg.cholesky(Sigma_0) )
     #
