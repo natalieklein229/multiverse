@@ -6,7 +6,7 @@ from bnns.SSGE import SpectralSteinEstimator as SSGE
 from bnns.SSGE import BaseScoreEstimator as SSGE_backend
 from bnns.utils import log_gaussian_pdf, get_std, gaussian_kl
 from quality_of_life.my_torch_utils import nonredundant_copy_of_module_list
-kernel_matrix = SSGE().gram_matrix
+kernel_matrix = SSGE_backend().gram_matrix
 
 
 
