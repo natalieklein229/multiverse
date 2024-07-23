@@ -240,7 +240,7 @@ class SequentialGaussianBNN(nn.Module):
         return mu_theta, Sigma_theta
     #
     # ~~~ Compute the mean and standard deviation of a normal distribution approximating q_theta
-    def gasussian_kl( self, mu_theta=None, Sigma_theta=None ):
+    def gaussian_kl( self, mu_theta=None, Sigma_theta=None ):
         if mu_theta is None and Sigma_theta is None:
             mu_theta, Sigma_theta = self.simple_gaussian_approximation( self, resample_measurement_set=True )
         mu_0, Sigma_0 = self.GP_prior(self.measurement_set)
