@@ -3,8 +3,10 @@ import math
 import torch
 from torch import nn
 from bnns.SSGE import SpectralSteinEstimator as SSGE
-from bnns.utils import log_gaussian_pdf, get_std
+from bnns.SSGE import BaseScoreEstimator as SSGE_backend
+from bnns.utils import log_gaussian_pdf, get_std, gaussian_kl
 from quality_of_life.my_torch_utils import nonredundant_copy_of_module_list
+kernel_matrix = SSGE().gram_matrix
 
 
 
@@ -58,6 +60,9 @@ class SequentialGaussianBNN(nn.Module):
         self.measurement_set = None
         self.prior_SSGE      = None
         self.use_eigh        = True
+        #
+        # ~~~ A callable GP prior
+        self.GP_prior = lambda x : torch.zeros_like(x),  kernel_matrix(x,x,0.1)
     #
     # ~~~ Sample according to a "standard normal distribution in the shape of our neural network"
     def sample_from_standard_normal(self):
@@ -198,6 +203,48 @@ class SequentialGaussianBNN(nn.Module):
         log_posterior_density  =  ( posterior_score_at_yhat @ yhat).squeeze() # ~~~ the inner product from the chain rule
         log_prior_density      =  (prior_score_at_yhat @ yhat).squeeze()      # ~~~ the inner product from the chain rule            
         return log_posterior_density, log_prior_density
+    #
+    # ~~~ Compute the mean and standard deviation of a normal distribution approximating q_theta
+    def simple_gaussian_approximation( self, resample_measurement_set=True ):
+        #
+        # ~~~ if `resample_measurement_set==True` then generate a new meausrement set
+        if resample_measurement_set:
+            self.sample_new_measurement_set()
+        #
+        # ~~~ First, compute the Jacobian at m of the model output with respect to the final layer's parameters (and treating the other layers' parameters as fixed)
+        if not isinstance( self.model_mean[-1] , torch.nn.modules.linear.Linear ):
+            raise NotImplementedError('Currently, the only case implemented is the the case from the paper where `\beta` is "the set of parameters in the final neural network layer" (bottom of pg. 4 of the paper).')
+        #
+        # ~~~ In this case, the Jacbian is easy to compute exactly: e.g., the Jacobian of A@whatever w.r.t. A is, simply `whatever`
+        J_beta = self.measurement_set
+        for j in range(self.n_layers-1):        # ~~~ stop before feeding it into the final layer
+            J_beta = self.model_mean[j](J_beta) # ~~~ since the Jacobian is computed at the mean, it does not depend on self.realized_standard_normal
+        #
+        # ~~~ The Jacobian of A@whatever+b w.r.t. (A,b) is, simply `column_stack(whatever,1)`
+        if self.model_mean[-1].bias:    # ~~~ only stack with 1's if there is a bias term
+            J_beta = torch.column_stack([
+                    J_beta,
+                    torch.ones( J_beta.shape[0], 1, device=self.measurement_set.device, dtype=self.measurement_set.dtype )
+                ])
+        #
+        # ~~~ Deviate slightly from the paper by not actually computing J_alpha, and instead only approximating the requried sample
+        self.sample_from_standard_normal()  # ~~~ essentially, resample network weights from the current distribution
+        z = self.realized_standard_normal[-1]
+        S_diag = torch.column_stack([
+                self.rho(self.model_std[-1].weight),
+                self.rho(self.model_std[-1].bias)
+            ])
+        Theta_beta_minus_mu_beta = S_diag * torch.column_stack([z.weight,z.bias])   # ~~~ Theta_beta = mu+sigma*z is sampled as Theta_sampled = mu+sigma*z_sampled
+        mu_theta = self( self.measurement_set, resample_weights=False ) - J_beta @ Theta_beta_minus_mu_beta # ~~~ solving for the mean of the approximating normal distribution when using f on the LHS of the paper's equation (12)
+        Sigma_theta = J_beta @ S_diag.diag() @ J_beta.T
+        return mu_theta, Sigma_theta
+    #
+    # ~~~ Compute the mean and standard deviation of a normal distribution approximating q_theta
+    def gasussian_kl( self, mu_theta=None, Sigma_theta=None ):
+        if mu_theta is None and Sigma_theta is None:
+            mu_theta, Sigma_theta = self.simple_gaussian_approximation( self, resample_measurement_set=True )
+        mu_0, Sigma_0 = self.GP_prior(self.measurement_set)
+        return gaussian_kl( mu_theta, torch.linalg.cholesky(Sigma_theta), mu_0, torch.linalg.cholesky(Sigma_0) )
     #
     # ~~~ A helper function that samples a bunch from the predicted posterior distribution
     def posterior_predicted_mean_and_std( self, x_test, n_samples ):

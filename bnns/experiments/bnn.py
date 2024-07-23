@@ -46,6 +46,7 @@ hyperparameter_template = {
     "model" : "univar_BNN",
     #
     # ~~~ For training
+    "gaussian_approximation" : True,    # ~~~ in an fBNN use a first order Gaussian approximation like Rudner et al.
     "functional" : False,   # ~~~ whether or to do functional training or (if False) BBB
     "n_MC_samples" : 20,    # ~~~ expectations (in the variational loss) are estimated as an average of this many Monte-Carlo samples
     "project" : True,       # ~~~ if True, use projected gradient descent; else use the weird thing from the paper
@@ -147,8 +148,16 @@ mean_optimizer = Optimizer( BNN.model_mean.parameters(), lr=lr )
 std_optimizer  =  Optimizer( BNN.model_std.parameters(), lr=lr )
 
 #
-# ~~~ Some plotting stuff
+# ~~~ Some naming stuff
 description_of_the_experiment = "fBNN" if functional else "BBB"
+if gaussian_approximation:
+    if functional:
+        description_of_the_experiment += " Using a Gaussian Approximation"
+    else:
+        my_warn("`gaussian_approximation` was specified as True, but `functional` was specified as False; since Rudner et al.'s Gaussian approximation is only used in fBNNs, it will not be used in this case.")
+
+#
+# ~~~ Some plotting stuff
 if data_is_univariate:
     #
     # ~~~ Define some objects used for plotting
@@ -212,7 +221,11 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
                 #
                 # ~~~ Compute the gradient of the loss function
                 if functional:
-                    log_posterior_density, log_prior_density = BNN.functional_kl(resample_measurement_set=False)
+                    if gaussian_approximation:
+                        log_posterior_density = BNN.gaussian_kl(resample_measurement_set=False)
+                        log_prior_density = 0.
+                    else:
+                        log_posterior_density, log_prior_density = BNN.functional_kl(resample_measurement_set=False)
                 else:
                     BNN.sample_from_standard_normal()   # ~~~ draw a new Monte-Carlo sample for estimating the integrals as an MC average
                     log_posterior_density   =   BNN.log_posterior_density()
