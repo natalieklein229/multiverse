@@ -235,7 +235,7 @@ class SequentialGaussianBNN(nn.Module):
                 self.rho(self.model_std[-1].bias)
             ])
         Theta_beta_minus_mu_beta = S_diag * torch.column_stack([z.weight,z.bias])   # ~~~ Theta_beta = mu+sigma*z is sampled as Theta_sampled = mu+sigma*z_sampled
-        mu_theta = self( self.measurement_set, resample_weights=False ) - J_beta @ Theta_beta_minus_mu_beta # ~~~ solving for the mean of the approximating normal distribution when using f on the LHS of the paper's equation (12)
+        mu_theta = self( self.measurement_set, resample_weights=False ) - J_beta @ Theta_beta_minus_mu_beta.T # ~~~ solving for the mean of the approximating normal distribution when using f on the LHS of the paper's equation (12)
         Sigma_theta = J_beta @ S_diag.diag() @ J_beta.T
         return mu_theta, Sigma_theta
     #
