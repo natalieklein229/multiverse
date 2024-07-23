@@ -223,7 +223,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
                 if functional:
                     if gaussian_approximation:
                         log_posterior_density = BNN.gaussian_kl( resample_measurement_set=False, add_stabilizing_noise=True )
-                        log_prior_density = 0.
+                        log_prior_density = torch.tensor(0.)
                     else:
                         log_posterior_density, log_prior_density = BNN.functional_kl(resample_measurement_set=False)
                 else:
