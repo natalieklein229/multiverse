@@ -168,7 +168,7 @@ if data_is_univariate:
     #
     # ~~~ Define the main plotting routine
     plot_predictions = plot_bnn_empirical_quantiles if visualize_bnn_using_quantiles else plot_bnn_mean_and_std
-    def plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, bnn, extra_std=extra_std, how_many_individual_predictions=how_many_individual_predictions, n_posterior_samples=n_posterior_samples, title=description_of_the_experiment, prior=False ):
+    def plot_bnn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, bnn, extra_std=(BNN.conditional_std if extra_std else 0.), how_many_individual_predictions=how_many_individual_predictions, n_posterior_samples=n_posterior_samples, title=description_of_the_experiment, prior=False ):
         #
         # ~~~ Draw from the posterior predictive distribuion
         with torch.no_grad():
