@@ -187,11 +187,11 @@ def plot_gpr(
 
 #
 # ~~~ Graph the mean +/- two standard deviations
-def two_standard_deviations( predictions, grid, ax, predictions_include_conditional_std, alpha=0.2, how_many_individual_predictions=6, **kwargs ):
+def two_standard_deviations( predictions, grid, ax, extra_std, alpha=0.2, how_many_individual_predictions=6, **kwargs ):
     #
     # ~~~ Extract summary stats from `predictions` assuming that each *column* of `predictions` is a sample from the posterior predictive distribution
     mean = predictions.mean(dim=-1)
-    std  =  predictions.std(dim=-1) + conditional_std
+    std  =  predictions.std(dim=-1) + extra_std
     lo, hi = mean-2*std, mean+2*std
     #
     # ~~~ Graph the median as a blue curve
@@ -209,7 +209,7 @@ def two_standard_deviations( predictions, grid, ax, predictions_include_conditio
     #
     # ~~~ Fill in a 95% confidence region
     tittle = "+/- Two Standard Deviations"
-    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if predictions_include_conditional_std else tittle+" Including Measurment Noise") )
+    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if extra_std==0. else tittle+" Including Measurment Noise") )
     return ax
 
 #
@@ -222,7 +222,7 @@ def plot_bnn_mean_and_std(
             x_train,
             y_train,        # ~~~ tensor with the same shape as `x_train`
             predictions,    # ~~~ matrix with number of rows len(predictions)==len(grid)==len(x_train)
-            predictions_include_conditional_std,    # ~~~ Boolean
+            extra_std,
             how_many_individual_predictions,
             title,
             **kwargs
@@ -236,16 +236,16 @@ def plot_bnn_mean_and_std(
             y_train,
             model = "None! All we need is the matrix of predictions",
             title = title,
-            blue_curve = lambda model,grid,ax: two_standard_deviations( predictions, grid, ax, predictions_include_conditional_std, how_many_individual_predictions=how_many_individual_predictions ),
+            blue_curve = lambda model,grid,ax: two_standard_deviations( predictions, grid, ax, extra_std, how_many_individual_predictions=how_many_individual_predictions ),
             **kwargs
         )
 
 #
 # ~~~ Graph a symmetric, empirical 95% confidence interval of a model with a median point estimate
-def empirical_quantile( predictions, grid, ax, predictions_include_conditional_std, alpha=0.2, how_many_individual_predictions=6, **kwargs ):
+def empirical_quantile( predictions, grid, ax, extra_std, alpha=0.2, how_many_individual_predictions=6, **kwargs ):
     #
     # ~~~ Extract summary stats from `predictions` assuming that each *column* of `predictions` is a sample from the posterior predictive distribution
-    lo,med,hi = predictions.quantile( q=torch.Tensor([0.05,0.5,0.95]), dim=-1 )
+    lo,med,hi = ( predictions + extra_std*randn_like*(predictions) ).quantile( q=torch.Tensor([0.05,0.5,0.95]), dim=-1 )
     #
     # ~~~ Graph the median as a blue curve
     _, = ax.plot( grid.cpu(), med.cpu(), label="Posterior Predictive Median", linestyle="-", linewidth=( 0.7 if how_many_individual_predictions>0 else 0.5 ), color="blue" )
@@ -262,7 +262,7 @@ def empirical_quantile( predictions, grid, ax, predictions_include_conditional_s
     #
     # ~~~ Fill in a 95% confidence region
     tittle = "95% Empirical Quantile Interval"
-    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if predictions_include_conditional_std else tittle+" Including Measurment Noise") )
+    _ = ax.fill_between( grid.cpu(), lo.cpu(), hi.cpu(), facecolor="blue", interpolate=True, alpha=alpha, label=(tittle if extra_std==0. else tittle+" Including Measurment Noise") )
     return ax
 
 #
@@ -275,7 +275,7 @@ def plot_bnn_empirical_quantiles(
             x_train,
             y_train,        # ~~~ tensor with the same shape as `x_train`
             predictions,    # ~~~ matrix with number of rows len(predictions)==len(grid)==len(x_train)
-            predictions_include_conditional_std,    # ~~~ Boolean
+            extra_std,
             how_many_individual_predictions,
             title,
             **kwargs
@@ -289,7 +289,7 @@ def plot_bnn_empirical_quantiles(
             y_train,
             model = "None! All we need is the matrix of predictions",
             title = title,
-            blue_curve = lambda model,grid,ax: empirical_quantile( predictions, grid, ax, predictions_include_conditional_std, how_many_individual_predictions=how_many_individual_predictions ),
+            blue_curve = lambda model,grid,ax: empirical_quantile( predictions, grid, ax, extra_std, how_many_individual_predictions=how_many_individual_predictions ),
             **kwargs
         )
 
