@@ -62,7 +62,7 @@ class SequentialGaussianBNN(nn.Module):
         self.use_eigh        = True
         #
         # ~~~ A callable GP prior
-        self.GP_prior = lambda x : torch.zeros_like(x),  kernel_matrix(x,x,0.1)
+        self.GP_prior = lambda x : (torch.zeros_like(x),  kernel_matrix(x,x,0.1))
     #
     # ~~~ Sample according to a "standard normal distribution in the shape of our neural network"
     def sample_from_standard_normal(self):
