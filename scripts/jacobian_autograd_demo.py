@@ -80,7 +80,7 @@ rank = torch.linalg.matrix_rank(J_beta).item()
 assert rank==14
 
 #
-# ~~~ Compute the full Jacobian using torch.func
+# ~~~ Compute the full Jacobian using torch.func (second example at https://pytorch.org/docs/stable/func.migrating.html#functorch-make-functional)
 jacobians = jacrev(functional_call, argnums=1)(NN, dict(NN.named_parameters()), (x_train,)) # ~~~ a dictionary with the same keys as NN.named_parameters()
 J_beta_func = jacobians["5.weight"].squeeze()
 

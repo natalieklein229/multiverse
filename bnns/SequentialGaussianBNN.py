@@ -224,11 +224,13 @@ class SequentialGaussianBNN(nn.Module):
             J_beta = self.model_mean[j](J_beta) # ~~~ since the Jacobian is computed at the mean, it does not depend on self.realized_standard_normal
         #
         # ~~~ The Jacobian of A@whatever+b w.r.t. (A,b) is, simply `column_stack(whatever,1)`
-        if self.model_mean[-1].bias:    # ~~~ only stack with 1's if there is a bias term
+        if self.model_mean[-1].bias is not None:    # ~~~ only stack with 1's if there is a bias term
             J_beta = torch.column_stack([
                     J_beta,
                     torch.ones( J_beta.shape[0], 1, device=self.measurement_set.device, dtype=self.measurement_set.dtype )
                 ])
+        # jacobians = jacrev(functional_call, argnums=1)( self, dict(self.named_parameters()), (x_train,) ) # ~~~ a dictionary with the same keys as NN.named_parameters()
+        # J_beta_func = jacobians["5.weight"].squeeze()
         #
         # ~~~ Deviate slightly from the paper by not actually computing J_alpha, and instead only approximating the requried sample
         self.sample_from_standard_normal()  # ~~~ essentially, resample network weights from the current distribution
