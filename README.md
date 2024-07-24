@@ -63,8 +63,30 @@ I believe, the complete list of required dependencies, excluding the standard li
 
 If desired, the dependencies on `plotly` and `quality_of_life` could be removed.
 
-## Running the code
+# Usage
 
+In order to run a test, the procedure is as follows. In order to specify hyperparameters, put a `.json` file containing hyperparameter values for the experiment that you want to run in the `experiments` folder.
+Different algorithms require different hyperparmeters, and these differences are reflected in the scripts that load the `.json` files.
+At the time of writing, there are 4 python scripts in the `experiments` folder: `bnn.py`, `det_nn.py`, `gpr.py`, and `stein.py`. To train a model with the hyperparamters specified by the `.json` file, say, `my_hyperpars.json`, you can run the script from the command in the experiment folder using `python <algorithm>.py --json my_hyperparameters`.
+To see which hyperparameters are expected by the algorithm (which are the fields that you need to include in your .json file), check either the demo .json file included with the repo, or check the body the python script, where a dictionary called `hyperparameter_template` should be defined.
+
+## Using the SLOSH Dataset
+
+This only works if you have the file `slosh_dat_nj.rda` located in the `experiments` folder (not included with the repo!).
+
+## Creating your own Dataset
+
+All the .json files are supposed to have a field called "data" whose value is a text string. Suppose the "data" field has a value of "my_brand_new_dataset".
+In that case, the python scripts which run experiments all attempt to `import my_brand_new_dataset from bnns.data` meaning that you need to create a file called `my_brand_new_dataset.py` located in the folder `data` if you want this to work.
+Additionally, within that file `my_brand_new_dataset.py`, you must define 3 pytorch datasets: `D_train`, `D_val`, and `D_test`, as the python scripts which run experiments will attempt to access these variables from that file in that location.
+
+## Creating your own Models
+
+All the .json files are supposed to have a field called "model" whose value is a text string. Suppose the "model" field has a value of "my_brand_new_architecture".
+In that case, the python scripts which run experiments all attempt to `import my_brand_new_architecture from bnns.data` meaning that you need to create a file called `my_brand_new_architecture.py` located in the folder `models` if you want this to work.
+Additionally, within that file `my_brand_new_architecture.py`, you must define a pytorch model: either called `BNN` or called `NN` depending on the experiment that is being run
+
+<<<<<<< HEAD
 nprec = .1**-2 # noise precision for the likelihood function
 likelihood = multiverse.likelihoods.HomoskedasticGaussian(n, precision=nprec)
 ```
@@ -89,6 +111,8 @@ Samples from the posterior in function space can be used to get samples from the
 f_samples = bayesian_mlp.predict(input_data, num_predictions=100)
 y_samples = bayesian_mlp.likelihood.sample(f_predictions)
 ```
+=======
+>>>>>>> a95a0fe (added some usage instructions to README)
 
 
  - The code for SSGE was taken from the repo https://github.com/AntixK/Spectral-Stein-Gradient
