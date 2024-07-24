@@ -86,7 +86,7 @@ if hasattr(sys,"ps1"):
     input_json_filename = "demo_bnn.json"
 else:
     #
-    # ~~~ When executed as a script (both with or without the `-i` flag), use argparse to extract the file name from `python bnn.py --json "my_hyperparmeters.json"` (https://stackoverflow.com/a/67731094)
+    # ~~~ When executed as a script (both with or without the `-i` flag), use argparse to extract the file name from `python bnn.py --json file_name.json` (https://stackoverflow.com/a/67731094)
     parser = argparse.ArgumentParser()
     try:
         parser.add_argument( '--json', type=str, required=True )
@@ -94,7 +94,7 @@ else:
         input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
     except:
         print("")
-        print("    Hint: try `python bnn.py --json demo_bnn.json`")
+        print("    Hint: try `python bnn.py --json demo_bnn`")
         print("")
         raise
 
@@ -111,7 +111,7 @@ globals().update(hyperparameters)       # ~~~ e.g., if hyperparameters=={ "a":1,
 torch.manual_seed(seed)
 
 #
-# ~~~ Handle the dtypes not writeable in .json format (e.g., if your dictionary includes the value `torch.optim.Adam` you save it as .json)
+# ~~~ Handle the dtypes not writeable in .json format (e.g., if your dictionary includes the value `torch.optim.Adam` you can't save it as .json)
 dtype = getattr(torch,dtype)            # ~~~ e.g., "float" (str) -> torch.float (torch.dtype) 
 torch.set_default_dtype(dtype)
 Optimizer = getattr(optim,Optimizer)    # ~~~ e.g., "Adam" (str) -> optim.Adam

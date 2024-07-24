@@ -79,7 +79,7 @@ if hasattr(sys,"ps1"):
     input_json_filename = "demo_stein.json"
 else:
     #
-    # ~~~ Use argparse to extract the file name from `python stein.py --json "my_hyperparmeters.json"` (https://stackoverflow.com/a/67731094)
+    # ~~~ Use argparse to extract the file name from `python stein.py --json my_hyperparmeters.json` (https://stackoverflow.com/a/67731094)
     parser = argparse.ArgumentParser()
     try:
         parser.add_argument( '--json', type=str, required=True )
@@ -87,7 +87,7 @@ else:
         input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
     except:
         print("")
-        print("    Hint: try `python stein.py --json demo_stein.json`")
+        print("    Hint: try `python stein.py --json demo_stein`")
         print("")
     raise
 
@@ -104,7 +104,7 @@ globals().update(hyperparameters)       # ~~~ e.g., if hyperparameters=={ "a":1,
 torch.manual_seed(seed)
 
 #
-# ~~~ Handle the dtypes not writeable in .json format (e.g., if your dictionary includes the value `torch.optim.Adam` you save it as .json)
+# ~~~ Handle the dtypes not writeable in .json format (e.g., if your dictionary includes the value `torch.optim.Adam` you can't save it as .json)
 dtype = getattr(torch,dtype)            # ~~~ e.g., "float" (str) -> torch.float (torch.dtype) 
 torch.set_default_dtype(dtype)
 Optimizer = getattr(optim,Optimizer)    # ~~~ e.g., "Adam" (str) -> optim.Adam
