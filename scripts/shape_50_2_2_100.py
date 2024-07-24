@@ -35,7 +35,7 @@ assert auto_J.shape==pencil_J.shape
 assert torch.allclose( auto_J, pencil_J )
 
 #
-# ~~~
+# ~~~ Save memory by computiung the Jacobian only with respect to the very final layer's parameters
 final_J = jacrev(functional_call, argnums=1)( NN[-1], dict(NN[-1].named_parameters()), (v,) )
 final_J = final_J["weight"].reshape(100,200)
 assert torch.allclose( auto_J, final_J )
