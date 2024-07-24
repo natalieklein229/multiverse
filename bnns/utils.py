@@ -86,6 +86,23 @@ def set_Dataset_attributes( dataset, device, dtype ):
                 return len(self.original_dataset)
         return ModifiedDataset(dataset)
 
+#
+# ~~~ Compute the (appropriately shaped) Jacobian of the final layer of a nerural net (I came up with the formula for the Jacobian, and chat-gpt came up with the generalized vectorized pytorch implementation)
+def manual_Jacobian( inputs_to_the_final_layer, number_of_output_features ):
+    V = inputs_to_the_final_layer
+    batch_size, _ = V.shape
+    total_number_of_predictions = batch_size * number_of_output_features
+    I = torch.eye(total_number_of_predictions, dtype=V.dtype, device=V.device)
+    # Tile the I matrix and the rows of V
+    tiled_I = I.repeat(batch_size, 1)
+    tiled_V = V.repeat_interleave( total_number_of_predictions, dim=0 )
+    # Multiply the tiled identity matrix with the tiled rows of V
+    result = tiled_I.unsqueeze(-1) * tiled_V.unsqueeze(1)
+    # Reshape the result to the desired shape
+    return result.view(batch_size * total_number_of_predictions, -1)
+
+
+
 
 ### ~~~
 ## ~~~ Plotting routines
