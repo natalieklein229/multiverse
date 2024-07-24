@@ -89,7 +89,7 @@ else:
         print("")
         print("    Hint: try `python stein.py --json demo_stein`")
         print("")
-    raise
+        raise
 
 #
 # ~~~ Load the .json file into a dictionary
