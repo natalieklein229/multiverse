@@ -2,6 +2,7 @@
 import math
 import torch
 from torch import nn
+from torch.func import jacrev, functional_call
 from bnns.SSGE import SpectralSteinEstimator as SSGE
 from bnns.SSGE import BaseScoreEstimator as SSGE_backend
 from bnns.utils import log_gaussian_pdf, get_std, gaussian_kl
@@ -21,7 +22,7 @@ class SequentialGaussianBNN(nn.Module):
         #
         # ~~~ Means and standard deviations for each network parameter
         super().__init__()
-        self.model_mean = nn.ModuleList(args)
+        self.model_mean = nn.Sequential(args)
         self.model_std  = nonredundant_copy_of_module_list(self.model_mean)
         self.n_layers   = len(self.model_mean)
         with torch.no_grad():
@@ -229,7 +230,8 @@ class SequentialGaussianBNN(nn.Module):
                     J_beta,
                     torch.ones( J_beta.shape[0], 1, device=self.measurement_set.device, dtype=self.measurement_set.dtype )
                 ])
-        # jacobians = jacrev(functional_call, argnums=1)( self, dict(self.named_parameters()), (x_train,) ) # ~~~ a dictionary with the same keys as NN.named_parameters()
+        # from torch.func import jacrev, functional_call
+        # jacobians = jacrev(functional_call, argnums=1)( self.model_mean, dict(self.model_mean.named_parameters()), (self.measurement_set,) ) # ~~~ a dictionary with the same keys as NN.named_parameters()
         # J_beta_func = jacobians["5.weight"].squeeze()
         #
         # ~~~ Deviate slightly from the paper by not actually computing J_alpha, and instead only approximating the requried sample
