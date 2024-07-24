@@ -11,6 +11,7 @@ from tqdm import tqdm, trange
 from matplotlib import pyplot as plt
 from importlib import import_module
 import argparse
+import sys
 
 #
 # ~~~ Package-specific utils
@@ -54,17 +55,24 @@ hyperparameter_template = {
 }
 
 #
-# ~~~ Use argparse to extract the file name from `python det_nn.py --json "my_hyperparmeters.json"` (https://stackoverflow.com/a/67731094)
-parser = argparse.ArgumentParser()
-try:
-    parser.add_argument( '--json', type=str, required=True )
-    input_json_filename = parser.parse_args().json
-    input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
-except:
-    print("")
-    print("    Hint: try `python det_nn.py --json demo_det_nn.json`")
-    print("")
-    raise
+# ~~~ Define the variable `input_json_filename`
+if hasattr(sys,"ps1"):
+    #
+    # ~~~ If this is an interactive (not srcipted) session, i.e., we are directly typing/pasting in the commands (I do this for debugging), then use the demo json name
+    input_json_filename = "demo_det_nn.json"
+else:
+    #
+    # ~~~ Use argparse to extract the file name from `python det_nn.py --json "my_hyperparmeters.json"` (https://stackoverflow.com/a/67731094)
+    parser = argparse.ArgumentParser()
+    try:
+        parser.add_argument( '--json', type=str, required=True )
+        input_json_filename = parser.parse_args().json
+        input_json_filename = input_json_filename if input_json_filename.endswith(".json") else input_json_filename+".json"
+    except:
+        print("")
+        print("    Hint: try `python det_nn.py --json demo_det_nn.json`")
+        print("")
+        raise
 
 #
 # ~~~ Load the .json file into a dictionary
