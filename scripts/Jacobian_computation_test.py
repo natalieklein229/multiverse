@@ -1,19 +1,34 @@
 
 import torch
 from torch.func import jacrev, functional_call
-from bnns.models.slosh_NN import NN
+from bnns.models.bivar_NN import NN
 from bnns.utils import manual_Jacobian
 from tqdm import trange
 
 #
 # ~~~ Make up some data
-torch.manual_seed(2024)
-x = torch.randn(50,5)
-batch_size = x.shape[0]
+batch_size = 50
+number_of_input_features  =  NN[0].in_features
 number_of_output_features = NN[-1].out_features # ~~~ for slosh nets, 49719
-V = x
-for j in range(len(NN)-1):
-    V = NN[j](V)
 
-final_J = jacrev(functional_call, argnums=1)( NN[-1], dict(NN[-1].named_parameters()), (V,) )
-final_J = final_J["weight"].reshape(number_of_output_features,-1)
+#
+# ~~~ Test how fast manual computation is
+torch.manual_seed(2024)
+for _ in trange(100):
+    V = torch.randn( batch_size, number_of_input_features )
+    for j in range(len(NN)-1):
+        V = NN[j](V)
+    final_J_manual = manual_Jacobian(V,number_of_output_features)
+
+
+#
+# ~~~ Test how fast torch.func is
+torch.manual_seed(2024)
+for _ in trange(100):
+    V = torch.randn( batch_size, number_of_input_features )
+    for j in range(len(NN)-1):
+        V = NN[j](V)
+    final_J = jacrev(functional_call, argnums=1)( NN[-1], dict(NN[-1].named_parameters()), (V,) )
+    final_J = final_J["weight"].reshape(number_of_output_features*batch_size,-1)
+
+assert torch.allclose(final_J,final_J_manual)
