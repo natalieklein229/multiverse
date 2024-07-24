@@ -14,7 +14,7 @@ number_of_output_features = NN[-1].out_features # ~~~ for slosh nets, 49719
 #
 # ~~~ Test how fast manual computation is
 torch.manual_seed(2024)
-for _ in trange(100):
+for _ in trange(100, desc="Computing the Jacobian via a handwritten formula" ):
     V = torch.randn( batch_size, number_of_input_features )
     for j in range(len(NN)-1):
         V = NN[j](V)
@@ -24,7 +24,7 @@ for _ in trange(100):
 #
 # ~~~ Test how fast torch.func is
 torch.manual_seed(2024)
-for _ in trange(100):
+for _ in trange(100, desc="Computing the Jacobian via torch.func.jacrev" ):
     V = torch.randn( batch_size, number_of_input_features )
     for j in range(len(NN)-1):
         V = NN[j](V)
