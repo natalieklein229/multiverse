@@ -1,13 +1,13 @@
 
 import torch
 from torch.func import jacrev, functional_call
-from bnns.models.bivar_NN import NN
+from bnns.models.bivar_NN import NN     # ~~~ memory overflow if you swap `bivar_NN` for `tiny_slosh_NN`
 from bnns.utils import manual_Jacobian
 from tqdm import trange
 
 #
 # ~~~ Make up some data
-batch_size = 50
+batch_size = 15
 number_of_input_features  =  NN[0].in_features
 number_of_output_features = NN[-1].out_features # ~~~ for slosh nets, 49719
 
