@@ -14,7 +14,7 @@ batch_size = x.shape[0]
 Jacobians = jacrev(functional_call, argnums=1)( NN, dict(NN.named_parameters()), (x,) ) # ~~~ a dictionary with the same keys as NN.named_parameters()
 auto_J = Jacobians["4.weight"]
 assert auto_J.shape==(50,2,2,100)
-auto_J = auto_J.reshape(100,200)
+auto_J = auto_J.reshape(100,200)    # 2*100 parameters -> 2*50 predictions
 
 #
 # ~~~ Construct the Jacobian using the values from immediately before the final linear transformation
@@ -31,4 +31,5 @@ pencil_J = torch.row_stack([
 
 #
 # ~~~ Observe that the two are the same
-asert torch.allclose( auto_J, pencil_J )
+assert auto_J.shape==pencil_J.shape
+assert torch.allclose( auto_J, pencil_J )
