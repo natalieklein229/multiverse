@@ -222,19 +222,19 @@ class SequentialGaussianBNN(nn.Module):
         if not isinstance( self.model_mean[-1] , torch.nn.modules.linear.Linear ):
             raise NotImplementedError('Currently, the only case implemented is the the case from the paper where `\beta` is "the set of parameters in the final neural network layer" (bottom of pg. 4 of the paper).')
         #
-        # ~~~ In this case, the Jacbian is easy to compute exactly: e.g., the Jacobian of A@whatever w.r.t. A is, simply `whatever`; let's first compute the `whatever`
+        # ~~~ In this case, the Jacbian is easy to compute exactly: e.g., the Jacobian of A@whatever w.r.t. A is, simply `whatever`; let's first compute the `whatever` provided it is shaped correctly
         whatever = self.measurement_set
         for j in range(self.n_layers-1):            # ~~~ stop before feeding it into the final layer
             whatever = self.model_mean[j](whatever) # ~~~ BTW since the Jacobian is computed at the mean, it does not depend on self.realized_standard_normal
-        J_beta = manual_Jacobian( whatever, number_of_output_features=self.model_mean[-1].out_features )
+        J_beta = manual_Jacobian( whatever, number_of_output_features=self.model_mean[-1].out_features )    # ~~~ basically just shape it correctly
         #
         # ~~~ Deviate slightly from the paper by not actually computing J_alpha, and instead only approximating the requried sample
         self.sample_from_standard_normal()          # ~~~ essentially, resample network weights from the current distribution
         z = self.realized_standard_normal[-1]
-        S_beta = self.rho(self.model_std[-1].weight).flatten().diag()   # ~~~ a diagonal matrix
-        Theta_beta_minus_mu_beta = S_beta.diag() * z.weight.flatten()   # ~~~ Theta_beta = mu_theta + Sigma_beta*z is sampled as Theta_sampled = mu_theta + Sigam_theta*z_sampled (a flat 1d vector)
+        S_beta = self.rho(self.model_std[-1].weight).flatten()  # ~~~ the vector along the main diagonal of the covariance matrix, which would be the diagonal matrix `S_beta.diag()`
+        Theta_beta_minus_mu_beta = S_beta * z.weight.flatten()  # ~~~ Theta_beta = mu_theta + Sigma_beta*z is sampled as Theta_sampled = mu_theta + Sigam_theta*z_sampled (a flat 1d vector)
         mu_theta = self( self.measurement_set, resample_weights=False ).flatten() - J_beta @ Theta_beta_minus_mu_beta   # ~~~ solving for the mean of the approximating normal distribution when using f on the LHS of the paper's equation (12)
-        Sigma_theta = J_beta @ S_beta @ J_beta.T
+        Sigma_theta = (S_beta*J_beta) @ (S_beta*J_beta).T
         return mu_theta, Sigma_theta
         # #
         # # ~~~ In this case, the Jacbian is easy to compute exactly: e.g., the Jacobian of A@whatever w.r.t. A is, simply `whatever`; let's first compute the `whatever`
