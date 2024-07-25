@@ -204,11 +204,11 @@ class SequentialGaussianBNN(nn.Module):
     #
     # ~~~ A callable GP prior
     def GP_prior(self,x):
-        if not hasattr(self,"K0inv"):
-            bw = 0.1
-            K_first_feature  = kernel_matrix( X[:,0].unsqueeze(-1), X[:,0].unsqueeze(-1) , bw ) + 0.0001*torch.ones_like(X[:,0]).diag()
-            K_second_feature = kernel_matrix( X[:,1].unsqueeze(-1), X[:,1].unsqueeze(-1) , bw ) + 0.0001*torch.ones_like(X[:,1]).diag()
-            self.K0inv = torch.block_diag( torch.linalg.inv(K_first_feature), torch.linalg.inv(K_second_feature) ) + 0.0001*torch.ones_like(X).diag()
+        # if not hasattr(self,"K0inv"):
+        #     bw = 0.1
+        #     K_first_feature  = kernel_matrix( X[:,0].unsqueeze(-1), X[:,0].unsqueeze(-1) , bw ) + 0.0001*torch.ones_like(X[:,0]).diag()
+        #     K_second_feature = kernel_matrix( X[:,1].unsqueeze(-1), X[:,1].unsqueeze(-1) , bw ) + 0.0001*torch.ones_like(X[:,1]).diag()
+        #     self.K0inv = torch.block_diag( torch.linalg.inv(K_first_feature), torch.linalg.inv(K_second_feature) ) + 0.0001*torch.ones_like(X).diag()
         return torch.zeros_like(x.flatten()), torch.ones_like(x.flatten()).diag()
     #
     # ~~~ Compute the mean and standard deviation of a normal distribution approximating q_theta
@@ -236,26 +236,26 @@ class SequentialGaussianBNN(nn.Module):
         mu_theta = self( self.measurement_set, resample_weights=False ).flatten() - J_beta @ Theta_beta_minus_mu_beta   # ~~~ solving for the mean of the approximating normal distribution when using f on the LHS of the paper's equation (12)
         Sigma_theta = J_beta @ S_beta @ J_beta.T
         return mu_theta, Sigma_theta
-        #
-        # ~~~ In this case, the Jacbian is easy to compute exactly: e.g., the Jacobian of A@whatever w.r.t. A is, simply `whatever`; let's first compute the `whatever`
-        J_beta = self.measurement_set
-        for j in range(self.n_layers-1):        # ~~~ stop before feeding it into the final layer
-            J_beta = self.model_mean[j](J_beta) # ~~~ since the Jacobian is computed at the mean, it does not depend on self.realized_standard_normal
-        #
-        # ~~~ The Jacobian of A@whatever+b w.r.t. (A,b) is, simply `column_stack(whatever,1)`
-        if self.model_mean[-1].bias is not None:    # ~~~ only stack with 1's if there is a bias term
-            J_beta = torch.column_stack([
-                    J_beta,
-                    torch.ones( J_beta.shape[0], 1, device=self.measurement_set.device, dtype=self.measurement_set.dtype )
-                ])
-        S_diag = torch.column_stack([
-                self.rho(self.model_std[-1].weight),
-                self.rho(self.model_std[-1].bias)
-            ]) if self.model_std[-1].bias else self.rho(self.model_std[-1].weight)
-        Theta_beta_minus_mu_beta = S_diag * torch.column_stack([z.weight,z.bias])   # ~~~ Theta_beta = mu+sigma*z is sampled as Theta_sampled = mu+sigma*z_sampled
-        mu_theta = self( self.measurement_set, resample_weights=False ) - J_beta @ Theta_beta_minus_mu_beta.T # ~~~ solving for the mean of the approximating normal distribution when using f on the LHS of the paper's equation (12)
-        Sigma_theta = J_beta @ S_diag.squeeze().diag() @ J_beta.T
-        return mu_theta, Sigma_theta
+        # #
+        # # ~~~ In this case, the Jacbian is easy to compute exactly: e.g., the Jacobian of A@whatever w.r.t. A is, simply `whatever`; let's first compute the `whatever`
+        # J_beta = self.measurement_set
+        # for j in range(self.n_layers-1):        # ~~~ stop before feeding it into the final layer
+        #     J_beta = self.model_mean[j](J_beta) # ~~~ since the Jacobian is computed at the mean, it does not depend on self.realized_standard_normal
+        # #
+        # # ~~~ The Jacobian of A@whatever+b w.r.t. (A,b) is, simply `column_stack(whatever,1)`
+        # if self.model_mean[-1].bias is not None:    # ~~~ only stack with 1's if there is a bias term
+        #     J_beta = torch.column_stack([
+        #             J_beta,
+        #             torch.ones( J_beta.shape[0], 1, device=self.measurement_set.device, dtype=self.measurement_set.dtype )
+        #         ])
+        # S_diag = torch.column_stack([
+        #         self.rho(self.model_std[-1].weight),
+        #         self.rho(self.model_std[-1].bias)
+        #     ]) if self.model_std[-1].bias else self.rho(self.model_std[-1].weight)
+        # Theta_beta_minus_mu_beta = S_diag * torch.column_stack([z.weight,z.bias])   # ~~~ Theta_beta = mu+sigma*z is sampled as Theta_sampled = mu+sigma*z_sampled
+        # mu_theta = self( self.measurement_set, resample_weights=False ) - J_beta @ Theta_beta_minus_mu_beta.T # ~~~ solving for the mean of the approximating normal distribution when using f on the LHS of the paper's equation (12)
+        # Sigma_theta = J_beta @ S_diag.squeeze().diag() @ J_beta.T
+        # return mu_theta, Sigma_theta
     #
     # ~~~ Compute the mean and standard deviation of a normal distribution approximating q_theta
     def gaussian_kl( self, mu_theta=None, Sigma_theta=None, resample_measurement_set=True, add_stabilizing_noise=False ):
