@@ -126,7 +126,7 @@ except:
     data = import_module(data)
 
 D_train = set_Dataset_attributes( data.D_train, device=DEVICE, dtype=dtype )
-D_test  =  set_Dataset_attributes( data.D_val, device=DEVICE, dtype=dtype )
+D_test  =  set_Dataset_attributes( data.D_val, device=DEVICE, dtype=dtype ) # ~~~ for hyperparameter evaulation and such, use the validation set instead of the "true" test set
 data_is_univariate = (D_train[0][0].numel()==1)
 
 
