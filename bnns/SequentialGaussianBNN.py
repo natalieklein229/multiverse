@@ -205,8 +205,11 @@ class SequentialGaussianBNN(nn.Module):
     # ~~~ A callable GP prior
     def GP_prior(self,x):
         if not hasattr(self,"K0inv"):
-            self.K0inv = kernel_matrix( x.unsqueeze(-1), x.unsqueeze(-1) , 0.1 ) + 0.0001*torch.ones_like(x).diag()
-        return torch.zeros_like(x), self.K0inv
+            bw = 0.1
+            K_first_feature  = kernel_matrix( X[:,0].unsqueeze(-1), X[:,0].unsqueeze(-1) , bw ) + 0.0001*torch.ones_like(X[:,0]).diag()
+            K_second_feature = kernel_matrix( X[:,1].unsqueeze(-1), X[:,1].unsqueeze(-1) , bw ) + 0.0001*torch.ones_like(X[:,1]).diag()
+            self.K0inv = torch.block_diag( torch.linalg.inv(K_first_feature), torch.linalg.inv(K_second_feature) ) + 0.0001*torch.ones_like(X).diag()
+        return torch.zeros_like(x.flatten()), torch.ones_like(x.flatten()).diag()
     #
     # ~~~ Compute the mean and standard deviation of a normal distribution approximating q_theta
     def simple_gaussian_approximation( self, resample_measurement_set=True ):
