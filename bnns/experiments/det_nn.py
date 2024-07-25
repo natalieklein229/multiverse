@@ -165,8 +165,8 @@ if data.__name__ == "bnns.data.bivar_trivial":
     from bnns.data.univar_missing_middle import x_test, y_test
     fig,ax = plt.subplots(figsize=(12,6))
     plt.plot( x_test, y_test, "--", color="green" )
-    y_pred = BNN(data.D_test.X).detach().mean(dim=-1)
-    plt.plot( x_test, pred, "-", color="blue" )
+    y_pred = NN(data.D_test.X).detach().mean(dim=-1)
+    plt.plot( x_test, y_pred, "-", color="blue" )
     fig.suptitle("If these lines roughly match, then the algorithm is surely working correctly")
     ax.grid()
     fig.tight_layout()
