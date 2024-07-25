@@ -1,1 +1,1 @@
-{"DEVICE": "cpu", "dtype": "float", "seed": 2024, "Optimizer": "Adam", "lr": 0.0005, "batch_size": 64, "n_epochs": 50, "make_gif": true, "how_often": 10, "initial_frame_repetitions": 24, "final_frame_repetitions": 48, "data": "bivar_missing_middle", "model": "bivar_NN"}
+{"DEVICE": "cpu", "dtype": "float", "seed": 2024, "Optimizer": "Adam", "lr": 0.0005, "batch_size": 64, "n_epochs": 5000, "make_gif": true, "how_often": 10, "initial_frame_repetitions": 24, "final_frame_repetitions": 48, "data": "bivar_missing_middle", "model": "bivar_NN"}
