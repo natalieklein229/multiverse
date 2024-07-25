@@ -223,7 +223,7 @@ class SequentialGaussianBNN(nn.Module):
         whatever = self.measurement_set
         for j in range(self.n_layers-1):            # ~~~ stop before feeding it into the final layer
             whatever = self.model_mean[j](whatever) # ~~~ BTW since the Jacobian is computed at the mean, it does not depend on self.realized_standard_normal
-        J_beta = manual_Jacobian( whatever, number_of_output_features=self.mean_model[-1].out_features )
+        J_beta = manual_Jacobian( whatever, number_of_output_features=self.model_mean[-1].out_features )
         #
         # ~~~ Deviate slightly from the paper by not actually computing J_alpha, and instead only approximating the requried sample
         self.sample_from_standard_normal()          # ~~~ essentially, resample network weights from the current distribution
