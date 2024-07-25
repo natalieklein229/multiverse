@@ -5,7 +5,7 @@ from torch import nn
 from torch.func import jacrev, functional_call
 from bnns.SSGE import SpectralSteinEstimator as SSGE
 from bnns.SSGE import BaseScoreEstimator as SSGE_backend
-from bnns.utils import log_gaussian_pdf, get_std, gaussian_kl
+from bnns.utils import log_gaussian_pdf, get_std, gaussian_kl, manual_Jacobian
 from quality_of_life.my_torch_utils import nonredundant_copy_of_module_list
 kernel_matrix = SSGE_backend().gram_matrix
 
@@ -219,7 +219,22 @@ class SequentialGaussianBNN(nn.Module):
         if not isinstance( self.model_mean[-1] , torch.nn.modules.linear.Linear ):
             raise NotImplementedError('Currently, the only case implemented is the the case from the paper where `\beta` is "the set of parameters in the final neural network layer" (bottom of pg. 4 of the paper).')
         #
-        # ~~~ In this case, the Jacbian is easy to compute exactly: e.g., the Jacobian of A@whatever w.r.t. A is, simply `whatever`
+        # ~~~ In this case, the Jacbian is easy to compute exactly: e.g., the Jacobian of A@whatever w.r.t. A is, simply `whatever`; let's first compute the `whatever`
+        whatever = self.measurement_set
+        for j in range(self.n_layers-1):            # ~~~ stop before feeding it into the final layer
+            whatever = self.model_mean[j](whatever) # ~~~ BTW since the Jacobian is computed at the mean, it does not depend on self.realized_standard_normal
+        J_beta = manual_Jacobian( whatever, number_of_output_features=self.mean_model[-1].out_features )
+        #
+        # ~~~ Deviate slightly from the paper by not actually computing J_alpha, and instead only approximating the requried sample
+        self.sample_from_standard_normal()          # ~~~ essentially, resample network weights from the current distribution
+        z = self.realized_standard_normal[-1]
+        S_beta = self.rho(self.model_std[-1].weight).flatten().diag()   # ~~~ a diagonal matrix
+        Theta_beta_minus_mu_beta = S_beta.diag() * z.weight.flatten()   # ~~~ Theta_beta = mu_theta + Sigma_beta*z is sampled as Theta_sampled = mu_theta + Sigam_theta*z_sampled (a flat 1d vector)
+        mu_theta = self( self.measurement_set, resample_weights=False ).flatten() - J_beta @ Theta_beta_minus_mu_beta   # ~~~ solving for the mean of the approximating normal distribution when using f on the LHS of the paper's equation (12)
+        Sigma_theta = J_beta @ S_beta @ J_beta.T
+        return mu_theta, Sigma_theta
+        #
+        # ~~~ In this case, the Jacbian is easy to compute exactly: e.g., the Jacobian of A@whatever w.r.t. A is, simply `whatever`; let's first compute the `whatever`
         J_beta = self.measurement_set
         for j in range(self.n_layers-1):        # ~~~ stop before feeding it into the final layer
             J_beta = self.model_mean[j](J_beta) # ~~~ since the Jacobian is computed at the mean, it does not depend on self.realized_standard_normal
@@ -230,15 +245,6 @@ class SequentialGaussianBNN(nn.Module):
                     J_beta,
                     torch.ones( J_beta.shape[0], 1, device=self.measurement_set.device, dtype=self.measurement_set.dtype )
                 ])
-        # self = BNN
-        # from torch.func import jacrev, functional_call
-        # jacobians = jacrev(functional_call, argnums=1)( self.model_mean, dict(self.model_mean.named_parameters()), (self.measurement_set,) ) # ~~~ a dictionary with the same keys as NN.named_parameters()
-        # J = jacobians["4.weight"]
-        # J_beta_func = jacobians["5.weight"].squeeze()
-        #
-        # ~~~ Deviate slightly from the paper by not actually computing J_alpha, and instead only approximating the requried sample
-        self.sample_from_standard_normal()  # ~~~ essentially, resample network weights from the current distribution
-        z = self.realized_standard_normal[-1]
         S_diag = torch.column_stack([
                 self.rho(self.model_std[-1].weight),
                 self.rho(self.model_std[-1].bias)
