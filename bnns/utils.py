@@ -2,6 +2,7 @@
 import math
 import pytz
 from datetime import datetime
+import fiona
 import numpy as np
 import torch
 from torch.nn.init import _calculate_fan_in_and_fan_out, calculate_gain     # ~~~ used (optionally) to define the prior distribution on network weights
@@ -12,6 +13,59 @@ try:
 except:
     from quality_of_life.my_visualization_utils import buffer   # ~~~ deprecated
     print("Please update quality_of_life")
+
+
+
+### ~~~
+## ~~~ Math stuff
+### ~~~
+
+#
+# ~~~ Compute the log pdf of a multivariate normal distribution with independent coordinates
+def log_gaussian_pdf( where, mu, sigma ):
+    assert mu.shape==where.shape
+    marginal_log_probs = -((where-mu)/sigma)**2/2 - torch.log( math.sqrt(2*torch.pi)*sigma )   # ~~~ note: isn't (x-mu)/sigma numerically unstable, like numerical differentiation?
+    return marginal_log_probs.sum()
+
+#
+# ~~~ Use Cholesky decompositions to compute the KL divergence N(mu_theta,Sigma_theta) || N(mu_0,Sigma_0) as described here https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence#Multivariate_normal_distributions
+def gaussian_kl( mu_theta, root_of_Sigma_theta, mu_0, root_of_Sigma_0_inv ):
+    mu_theta = mu_theta.flatten()
+    mu_0 = mu_0.flatten()
+    assert len(mu_theta)==len(mu_0)
+    k = len(mu_0)
+    assert root_of_Sigma_theta.shape==(k,k)==root_of_Sigma_0_inv.shape
+    return ((root_of_Sigma_theta@root_of_Sigma_0_inv).norm()**2 - k + (root_of_Sigma_0_inv@(mu_0-mu_theta)).norm()**2)/2 - root_of_Sigma_0_inv.diag().log().sum() - root_of_Sigma_theta.diag().log().sum()
+
+#
+# ~~~ Define what we want the prior std. to be for each group of model parameters
+def get_std(p):
+    if len(p.shape)==1: # ~~~ for the biase vectors, take variance=1/length
+        numb_pars = len(p)
+        std = 1/math.sqrt(numb_pars)
+    else:   # ~~~ for the weight matrices, mimic pytorch's `xavier normal` initialization (https://pytorch.org/docs/stable/_modules/torch/nn/init.html#xavier_normal_)
+        fan_in, fan_out = _calculate_fan_in_and_fan_out(p)
+        gain = calculate_gain("relu")
+        std = gain * math.sqrt(2.0 / float(fan_in + fan_out))
+    return torch.tensor( std, device=p.device, dtype=p.dtype )
+
+#
+# ~~~ Compute the (appropriately shaped) Jacobian of the final layer of a nerural net (I came up with the formula for the Jacobian, and chat-gpt came up with the generalized vectorized pytorch implementation)
+def manual_Jacobian( inputs_to_the_final_layer, number_of_output_features ):
+    V = inputs_to_the_final_layer
+    batch_size, width_of_the_final_layer = V.shape
+    total_number_of_predictions = batch_size * number_of_output_features
+    I = torch.eye( number_of_output_features, dtype=V.dtype, device=V.device)
+    tiled_I = I.repeat( batch_size, 1 )
+    tiled_V = V.repeat_interleave( number_of_output_features, dim=0 )
+    result = tiled_I.unsqueeze(-1) * tiled_V.unsqueeze(1)
+    return result.view( total_number_of_predictions, -1 )
+
+
+
+### ~~~
+## ~~~ Non-math non-plotting stuff (e.g., data processing)
+### ~~~
 
 #
 # ~~~ Generate a .json filename based on the current datetime
@@ -31,36 +85,6 @@ def generate_json_filename(verbose=True):
         print(f"    Generating file name {file_name} at {hour}:{time.minute}{suffix}")
         print("")
     return file_name
-
-#
-# ~~~ Compute the log pdf of a multivariate normal distribution with independent coordinates
-def log_gaussian_pdf( where, mu, sigma ):
-    assert mu.shape==where.shape
-    marginal_log_probs = -((where-mu)/sigma)**2/2 - torch.log( math.sqrt(2*torch.pi)*sigma )   # ~~~ note: isn't (x-mu)/sigma numerically unstable, like numerical differentiation?
-    return marginal_log_probs.sum()
-
-#
-# ~~~ Use Cholesky decompositions to compute the KL divergence N(mu_theta,Sigma_theta) || N(mu_0,Sigma_0) as described here https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence#Multivariate_normal_distributions
-def gaussian_kl( mu_theta, root_of_Sigma_theta, mu_0, root_of_Sigma_0_inv ):
-    mu_theta = mu_theta.flatten()
-    mu_0 = mu_0.flatten()
-    assert len(mu_theta)==len(mu_0)
-    k = len(mu_0)
-    assert root_of_Sigma_theta.shape==(k,k)==root_of_Sigma_0_inv.shape
-    return ((root_of_Sigma_theta@root_of_Sigma_0_inv).norm()**2 - k + (root_of_Sigma_0_inv@(mu_0-mu_theta)).norm()**2)/2 - root_of_Sigma_0_inv.diag().log().sum() - root_of_Sigma_theta.diag().log().sum()
-
-
-#
-# ~~~ Define what we want the prior std. to be for each group of model parameters
-def get_std(p):
-    if len(p.shape)==1: # ~~~ for the biase vectors, take variance=1/length
-        numb_pars = len(p)
-        std = 1/math.sqrt(numb_pars)
-    else:   # ~~~ for the weight matrices, mimic pytorch's `xavier normal` initialization (https://pytorch.org/docs/stable/_modules/torch/nn/init.html#xavier_normal_)
-        fan_in, fan_out = _calculate_fan_in_and_fan_out(p)
-        gain = calculate_gain("relu")
-        std = gain * math.sqrt(2.0 / float(fan_in + fan_out))
-    return torch.tensor( std, device=p.device, dtype=p.dtype )
 
 #
 # ~~~ My version of the missing feature: a `dataset.to` method
@@ -87,16 +111,15 @@ def set_Dataset_attributes( dataset, device, dtype ):
         return ModifiedDataset(dataset)
 
 #
-# ~~~ Compute the (appropriately shaped) Jacobian of the final layer of a nerural net (I came up with the formula for the Jacobian, and chat-gpt came up with the generalized vectorized pytorch implementation)
-def manual_Jacobian( inputs_to_the_final_layer, number_of_output_features ):
-    V = inputs_to_the_final_layer
-    batch_size, width_of_the_final_layer = V.shape
-    total_number_of_predictions = batch_size * number_of_output_features
-    I = torch.eye( number_of_output_features, dtype=V.dtype, device=V.device)
-    tiled_I = I.repeat( batch_size, 1 )
-    tiled_V = V.repeat_interleave( number_of_output_features, dim=0 )
-    result = tiled_I.unsqueeze(-1) * tiled_V.unsqueeze(1)
-    return result.view( total_number_of_predictions, -1 )
+# ~~~ Load coastline land coords (Natalie sent me this code, which I just packaged into a function)
+def load_coast_coords(coast_shp_path):
+    shape = fiona.open(coast_shp_path)
+    coast_coords = []
+    for i in range(len(shape)):
+        c = np.array(shape[i]['geometry']['coordinates'])
+        coast_coords.append(c)
+    coast_coords = np.vstack(coast_coords)
+    return coast_coords
 
 
 
