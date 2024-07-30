@@ -1,6 +1,7 @@
 
 #
 # ~~~ Get the data
+import numpy as np
 from bnns.data.slosh_70_15_15 import out_np, coords_np, inputs_np
 
 #
