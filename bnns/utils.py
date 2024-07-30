@@ -185,7 +185,7 @@ def slosh_heatmap( out, inp=None, show=True ):
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
         plt.title("Heightmap in Cape May County, NJ")
-        plt.legend(alpha=0.9)
+        plt.legend(framealpha=0.9)
         plt.tight_layout()
         plt.show()
     else:
