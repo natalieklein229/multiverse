@@ -129,15 +129,15 @@ def load_coast_coords(coast_shp_path):
 
 #
 # ~~~ Plot a datapoint from (or a prediction of) the SLOSH dataset as a heatmap
-def slosh_heatmap( out, in=None, show=True ):
+def slosh_heatmap( out, inp=None, show=True ):
     #
-    # ~~~ Process `out` and `in`
+    # ~~~ Process `out` and `inp`
     convert = lambda V: V.detach().cpu().numpy().squeeze() if isinstance(V,torch.Tensor) else V
     out = convert(out)
-    in = convert(in)
+    inp = convert(inp)
     assert out.shape==(49719,), "Required argument `out` should have shape (49719,)"
-    if in is not None:
-        assert in.shape==(5,), "Optional argument `in` should have shape (5,)"
+    if inp is not None:
+        assert inp.shape==(5,), "Optional argument `inp` should have shape (5,)"
     #
     # ~~~ Create the actual heat map
     from bnns.data.slosh_70_15_15 import coords_np
@@ -148,12 +148,12 @@ def slosh_heatmap( out, in=None, show=True ):
     plt.colorbar(label="Storm Surge Heights")
     #
     # ~~~ Create a legend with the input values, if any were supplied, using the hack from https://stackoverflow.com/a/45220580
-    if in is not None:
-        plt.plot( [], [], " ", label=f"SLR = {in[0]}" )
-        plt.plot( [], [], " ", label=f"heading = {in[1]}" )
-        plt.plot( [], [], " ", label=f"vel = {in[2]}" )
-        plt.plot( [], [], " ", label=f"pmin = {in[3]}" )
-        plt.plot( [], [], " ", label=f"lat = {in[4]}" )
+    if inp is not None:
+        plt.plot( [], [], " ", label=f"SLR = {inp[0]}" )
+        plt.plot( [], [], " ", label=f"heading = {inp[1]}" )
+        plt.plot( [], [], " ", label=f"vel = {inp[2]}" )
+        plt.plot( [], [], " ", label=f"pmin = {inp[3]}" )
+        plt.plot( [], [], " ", label=f"lat = {inp[4]}" )
     #
     # ~~~ Add the coastline, if possible
     try:

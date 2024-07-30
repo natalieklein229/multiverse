@@ -83,4 +83,4 @@ plt.show()
 
 #
 # ~~~ Test the funciton slosh_heatmap()
-slosh_heatmap( out=out_np[N], in=inputs_np[N] )
+slosh_heatmap( out=out_np[N], inp=inputs_np[N] )
