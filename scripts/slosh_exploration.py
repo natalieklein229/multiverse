@@ -7,7 +7,8 @@ from bnns.data.slosh_70_15_15 import out_np, coords_np, inputs_np
 #
 # ~~~ Verify that the first feature is "Sea level rise in the year 2100"
 sea_level_rise = inputs_np[:,0]
-print("Second feaure: sea level rise:")
+print("")
+print("First feaure: sea level rise:")
 print(f"    In our dataset, the lower value is {sea_level_rise.min()}, whereas the paper states a lower value of -20")
 print(f"    In our dataset, the upper value is {sea_level_rise.max()}, whereas the paper states an upper value of 350")
 
@@ -24,7 +25,7 @@ print(f"    In our dataset, the upper value is {headings.max()}, whereas the pap
 # ~~~ Verify that the third feature is "Velocity of the eye of the storm when it made landfall"
 velocity = inputs_np[:,2]
 print("")
-print("Second feaure: velocity upon landfall:")
+print("Third feaure: velocity upon landfall:")
 print(f"    In our dataset, the lower value is {velocity.min()}, whereas the paper states a lower value of 0")
 print(f"    In our dataset, the upper value is {velocity.max()}, whereas the paper states an upper value of 40")
 
@@ -32,7 +33,7 @@ print(f"    In our dataset, the upper value is {velocity.max()}, whereas the pap
 # ~~~ Verify that the fourth feature is "Minimum air pressure of the storm when it made landfall"
 min_air_p = inputs_np[:,3]
 print("")
-print("Second feaure: minimum air pressure upon landfall:")
+print("Fourth feaure: minimum air pressure upon landfall:")
 print(f"    In our dataset, the lower value is {min_air_p.min()}, whereas the paper states a lower value of 930")
 print(f"    In our dataset, the upper value is {min_air_p.max()}, whereas the paper states an upper value of 980")
 
@@ -40,6 +41,8 @@ print(f"    In our dataset, the upper value is {min_air_p.max()}, whereas the pa
 # ~~~ Verify that the fifth feature is "Latitude of the storm when it made landfall"
 latitude = inputs_np[:,4]
 print("")
-print("Second feaure: latitude upon landfall:")
+print("Fifth feaure: latitude upon landfall:")
 print(f"    In our dataset, the lower value is {latitude.min()}, whereas the paper states a lower value of 38.32527")
 print(f"    In our dataset, the upper value is {latitude.max()}, whereas the paper states an upper value of 39.26811")
+
+print("")
