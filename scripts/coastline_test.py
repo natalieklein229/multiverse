@@ -47,15 +47,33 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
-
 #
 # ~~~ Plot a heatmap as a scatterplot without interpolation
 plt.figure(figsize=(6,5))
 plt.scatter( x, y, c=z, cmap="viridis" )
 plt.colorbar(label="Storm Surge Heights")
 plt.plot( coast_x, coast_y, color="black", linewidth=1, label="Coastline" )
-plt.xlim(X.min(),X.max())
-plt.ylim(Y.min(),Y.max())
+plt.xlim(x.min(),x.max())
+plt.ylim(y.min(),y.max())
+plt.xlabel("Longitude")
+plt.ylabel("Latitude")
+plt.title("Heightmap")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+#
+# ~~~ Use plt.imshow (extend the heatmap into a grid compatible with plt.imshow(grid))
+grid_x = np.linspace( x.min(), x.max(), 350 )   # ~~~ 350 == 1+round( (x.max()-x.min())/0.001 ); 0.001 discovered since `np.unique(np.diff(x))` are all multiples of 0.001
+grid_y = np.linspace( y.min(), y.max(), 272 )   # ~~~ 272 == 1+round( (y.max()-y.min())/0.001 ); 0.001 discovered since `np.unique(np.diff(y))` are all multiples of 0.001
+image = np.full( (350,272), np.nan )
+for height, i, j in zip( z, np.searchsorted(grid_x,x), np.searchsorted(grid_y,y) ):
+    image[i,j] = height
+
+plt.imshow( image, cmap="viridis", extent=[x.min(),x.max(),y.min(),y.max()] )
+plt.plot( coast_x, coast_y, color="black", linewidth=1, label="Coastline" )
+plt.xlim(x.min(),x.max())
+plt.ylim(y.min(),y.max())
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
 plt.title("Heightmap")
