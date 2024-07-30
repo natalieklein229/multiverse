@@ -22,7 +22,7 @@ except FileNotFoundError:
 
 #
 # ~~~ Plot a heatmap
-from slosh_70_15_15 import out_np, coords_np
+from bnns.data.slosh_70_15_15 import out_np, coords_np
 vector_viz( x=coords_np[:,0], y=coords_np[:,1], z=out_np[0] )
 vector_viz( x=coords_np[:,0], y=coords_np[:,1], z=out_np[0], graph_object=go.Heatmap )
 
