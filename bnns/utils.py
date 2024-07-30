@@ -181,12 +181,12 @@ def slosh_heatmap( out, inp=None, show=True ):
         my_warn("Could not find `ne_10m_coastline.shp`. In order to plot the coastline, go to https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-coastline/ and click the `Download coastline` button. Unzip the folder, and move the unzipped folder called `ne_10m_coastline` into the working directory or (if the working directory is a subdirectory of the `bnns` repo) the folder bnns/bnns/data")
     #
     # ~~~ Finally just label stuff
-    plt.xlabel("Longitude")
-    plt.ylabel("Latitude")
-    plt.title("Heightmap in Cape May County, NJ")
-    plt.legend()
-    plt.tight_layout()
     if show:
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        plt.title("Heightmap in Cape May County, NJ")
+        plt.legend(alpha=0.9)
+        plt.tight_layout()
         plt.show()
     else:
         return figure
