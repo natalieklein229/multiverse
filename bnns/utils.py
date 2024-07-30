@@ -1,13 +1,14 @@
 
 import math
-import pytz
-from datetime import datetime
-from matplotlib import pyplot as plt
-import fiona
 import numpy as np
 import torch
 from torch.nn.init import _calculate_fan_in_and_fan_out, calculate_gain     # ~~~ used (optionally) to define the prior distribution on network weights
 
+import os
+import pytz
+from datetime import datetime
+from matplotlib import pyplot as plt
+import fiona
 from quality_of_life.my_base_utils import process_for_saving, dict_to_json
 try:
     from quality_of_life.my_base_utils import buffer
