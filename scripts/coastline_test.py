@@ -20,21 +20,21 @@ try:
 except FileNotFoundError:
     my_warn("In order to plot the coastline, go to https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-coastline/ and click the `Download coastline` button. Unzip the folder, and move the unzipped folder called `ne_10m_coastline` into the folder bnns/bnns/data")
 
-
 #
 # ~~~ Get the data
-from bnns.data.slosh_70_15_15 import out_np, coords_np
+from bnns.data.slosh_70_15_15 import out_np, coords_np, inputs_np
 # vector_viz( x=coords_np[:,0], y=coords_np[:,1], z=out_np[0] )
 x = coords_np[:,0]
 y = coords_np[:,1]
-z = out_np[10]
+N = 3000
+z = out_np[N]
 
 #
 # ~~~ Plot a heatmap using interpolation
 X,Y,Z = extend_to_grid( x, y, z, res=501, method="linear" )
 Z = np.nan_to_num(Z,nan=0.)
 Z = Z*(Z>0)
-plt.figure(figsize=(6,5))
+plt.figure(figsize=(9,7))
 plt.contourf( X, Y, Z, cmap="viridis" )
 plt.colorbar(label="Storm Surge Heights")
 plt.plot( coast_x, coast_y, color="black", linewidth=1, label="Coastline" )
@@ -49,7 +49,7 @@ plt.show()
 
 #
 # ~~~ Plot a heatmap as a scatterplot without interpolation
-plt.figure(figsize=(6,5))
+plt.figure(figsize=(9,7))
 plt.scatter( x, y, c=z, cmap="viridis" )
 plt.colorbar(label="Storm Surge Heights")
 plt.plot( coast_x, coast_y, color="black", linewidth=1, label="Coastline" )
@@ -63,7 +63,7 @@ plt.tight_layout()
 plt.show()
 
 #
-# ~~~ Use plt.imshow (extend the heatmap into a grid compatible with plt.imshow(grid))
+# ~~~ Use plt.imshow (extend the heatmap into a grid compatible with plt.imshow(grid)) THIS DOESN'T ACTUALLY WORK BUT I DON'T REALLY KNOW WHY, NOR DO I THINK IT MATTERS
 grid_x = np.linspace( x.min(), x.max(), 350 )   # ~~~ 350 == 1+round( (x.max()-x.min())/0.001 ); 0.001 discovered since `np.unique(np.diff(x))` are all multiples of 0.001
 grid_y = np.linspace( y.min(), y.max(), 272 )   # ~~~ 272 == 1+round( (y.max()-y.min())/0.001 ); 0.001 discovered since `np.unique(np.diff(y))` are all multiples of 0.001
 image = np.full( (350,272), np.nan )
@@ -80,3 +80,7 @@ plt.title("Heightmap")
 plt.legend()
 plt.tight_layout()
 plt.show()
+
+#
+# ~~~ Test the funciton slosh_heatmap()
+slosh_heatmap( out=out_np[N], in=inputs_np[N] )

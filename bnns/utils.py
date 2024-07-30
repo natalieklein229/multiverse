@@ -128,6 +128,68 @@ def load_coast_coords(coast_shp_path):
 ### ~~~
 
 #
+# ~~~ Plot a datapoint from (or a prediction of) the SLOSH dataset as a heatmap
+def slosh_heatmap( out, in=None, show=True ):
+    #
+    # ~~~ Process `out` and `in`
+    convert = lambda V: V.detach().cpu().numpy().squeeze() if isinstance(V,torch.Tensor) else V
+    out = convert(out)
+    in = convert(in)
+    assert out.shape==(49719,), "Required argument `out` should have shape (49719,)"
+    if in is not None:
+        assert in.shape==(5,), "Optional argument `in` should have shape (5,)"
+    #
+    # ~~~ Create the actual heat map
+    from bnns.data.slosh_70_15_15 import coords_np
+    x = coords_np[:,0]
+    y = coords_np[:,1]
+    figure = plt.figure(figsize=(9,7))
+    plt.scatter( x, y, c=out, cmap="viridis" )
+    plt.colorbar(label="Storm Surge Heights")
+    #
+    # ~~~ Create a legend with the input values, if any were supplied, using the hack from https://stackoverflow.com/a/45220580
+    if in is not None:
+        plt.plot( [], [], " ", label=f"SLR = {in[0]}" )
+        plt.plot( [], [], " ", label=f"heading = {in[1]}" )
+        plt.plot( [], [], " ", label=f"vel = {in[2]}" )
+        plt.plot( [], [], " ", label=f"pmin = {in[3]}" )
+        plt.plot( [], [], " ", label=f"lat = {in[4]}" )
+    #
+    # ~~~ Add the coastline, if possible
+    try:
+        users_dir = os.getcwd()
+        try:
+            #
+            # ~~~ Attempt to load the coastline assuming the folder `ne_10m_coastline` is in the working directory
+            os.chdir("ne_10m_coastline")
+            c = load_coast_coords("ne_10m_coastline.shp")
+            os.chdir(users_dir)
+        except FileNotFoundError:
+            #
+            # ~~~ Attempt to load the coastline assuming the working directory is a subdirectory of the `bnns` repo *and* the folder `ne_10m_coastline` is located in bnns/bnns/data
+            os.chdir(os.path.join( find_root_dir_of_repo(), "bnns", "data", "ne_10m_coastline" ))
+            c = load_coast_coords("ne_10m_coastline.shp")
+            os.chdir(users_dir)
+            raise
+        coast_x, coast_y = c[:,0], c[:,1]
+        plt.plot( coast_x, coast_y, color="black", linewidth=1 ) #,  label="Coastline" )
+        plt.xlim(x.min(),x.max())
+        plt.ylim(y.min(),y.max())
+    except FileNotFoundError:
+        my_warn("Could not find `ne_10m_coastline.shp`. In order to plot the coastline, go to https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-coastline/ and click the `Download coastline` button. Unzip the folder, and move the unzipped folder called `ne_10m_coastline` into the working directory or (if the working directory is a subdirectory of the `bnns` repo) the folder bnns/bnns/data")
+    #
+    # ~~~ Finally just label stuff
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.title("Heightmap")
+    plt.legend()
+    plt.tight_layout()
+    if show:
+        plt.show()
+    else:
+        return figure
+
+#
 # ~~~ Somewhat general helper routine for making plots
 def univar_figure( fig, ax, grid, green_curve, x_train, y_train, model, title=None, blue_curve=None, **kwargs ):
     with torch.no_grad():
