@@ -51,6 +51,6 @@ _ = plt.suptitle(f"Estimated Integral is {(y_train/q).median()}. True integral i
 _ = plt.legend(loc="upper left")
 if make_gif:
     gif.capture()
-    gif.develop(destination="Tom's Idea", fps=1 )
+    gif.develop( destination = "Tom's Idea (plot of g)" if plot_g else "Tom's Idea", fps=1 )
 else:
     plt.show()
