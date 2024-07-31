@@ -8,10 +8,12 @@ def make_percentage_explained_plot( M, title="Percentage of Variance Explained",
     M = M.T if m>n else M
     vals, vecs = np.linalg.eigh(M@M.T)
     s = np.sqrt(vals[::-1])
-    percentage_explained = np.cumsum(s)/np.sum(s)
+    percentage_explained = np.cumsum(s**2)/np.sum(s**2)
     if show:
         plt.plot(percentage_explained)
+        plt.xlim([0,20])
         plt.ylim([0.9,1.])
+        plt.axhline(0.99, color='red', linestyle='dashed')
         plt.title(title)
         plt.grid()
         plt.tight_layout()
