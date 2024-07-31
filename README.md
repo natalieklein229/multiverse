@@ -97,7 +97,10 @@ The interpretation is as follows:
  - When a vector of coefficients $`(a_1,\ldots,a_r)`$ is produced by some predictive model, the final prediction is $`a_1 s_1 v^{(1)} + ... + a_r s_r v^{(r)}`$, which has the same shape (and meaning!) as one of the rows of $Y$. Thus, given a batch `A` of such vectors, i.e., a matrix with $`r`$ rows, the final batch of predictions is given by $`A S V^\intercal`$.
 
 In other words, the originally given data matrix `Y` is pre-processed with an SVD `Y = U @ S @ V.T` where `S` is diagonal. Then `S` and `V` are stored for the prediction phase, while the processed matrix `U` is treated as the data matrix for the purposes of training.
-After training, a batch prediction `P` with as many columns as `U` (but fewer rows: only as many as the batch size) can be re-converted into the same format as `Y` via `final_prediction = P @ S @ V.T`, each *row* of which should look like "the same kind of data" as each row of `Y` (in our case, a heatmap).
+After training, a batch prediction `P` with as many columns as `U` (but fewer rows: only as many as the batch size) can be re-converted into the same format as `Y` via `final_prediction = P @ S @ V.T`, each *row* of which should look like "the same kind of data" as each row of `Y`.
+If this procedure is applied directly to the matrix `Y = y_train`, then the "kind of data" in question would be a heatmap, like what one sees visualized in aforementioned paper.
+However, note that the matrix `Y` could, itslef, have already been a processed version of the data (e.g., subtracint the mean), in which case the final predicted heatmap would also require further processing to reflect/undo however `Y` was obtrained from "the real data."
+That is to say, one must be cognizant of whether or not PCA is *the only* pre-processing that's done to the data.
 
 ## Creating your own Dataset
 
