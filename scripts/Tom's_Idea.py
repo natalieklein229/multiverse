@@ -16,7 +16,7 @@ for t in trange(500):
     _ = plt.plot( x_train, y_train/(2*torch.pi), "--", color="green", label="True Post." ) # true posterior density function
     _ = plt.plot( x_train, q, "-",  color="blue", label="Approx. Post." ) # approximate posterior density function
     _ = plt.axvline( wt, color='red', linestyle='dashed', label=f"Loc. of w_{t}" )
-    _ = plt.xlim([0,2*torch.pi])
+    _ = plt.xlim([-0.01,2*torch.pi+0.01])
     _ = plt.ylim([0,1/3])
     _ = plt.legend(loc="upper left")
     gif.capture()
