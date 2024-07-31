@@ -76,10 +76,16 @@ The SLOSH dataset can only by used if you have the file `slosh_dat_nj.rda` locat
 
 The Y data of the slosh data set has m=4000 rows and n_y>49000 columns. Instead of training on the full dataset, we follow the PCA decomposition of [https://onlinelibrary.wiley.com/doi/epdf/10.1002/env.2796](https://onlinelibrary.wiley.com/doi/epdf/10.1002/env.2796), which we now review.
 Assume that the matrix $`Y`$ is a "data matrix," in the sense that each datum is a *row* of the matrix (as opposed to a column).
-Then, in the SVD $`Y = USV^\intercal = \sum_{k<=r} s_k u^{(k)} [v^{(k)}]^\intercal`$, the $`(\ell,j)`$-th entry of $`Y`$ is
+Then, in the SVD
 
 ```math
-    Y_{\ell,j} = \sum_{k<=r} s_k u_\ell^{(k)} v_j^{(k)}.
+    Y = USV^\intercal = \sum_{k \leq r} s_k u^{(k)} \big[v^{(k)}\big]^\intercal,
+````
+
+the $`(\ell,j)`$-th entry of $`Y`$ is
+
+```math
+    Y_{\ell,j} = \sum_{k \leq r} s_k u_\ell^{(k)} v_j^{(k)}.
 ````
 
 From this we can see each one of the original data (each row of $`Y`$) is a linear combination of the vectors $`s_1v^{(1)}, \ldots, s_rv^{(r)}`$.
