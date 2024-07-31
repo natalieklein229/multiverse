@@ -88,13 +88,13 @@ the $`(\ell,j)`$-th entry of $`Y`$ is
     Y_{\ell,j} = \sum_{k \leq r} s_k u_\ell^{(k)} v_j^{(k)}.
 ````
 
-From this we can see each one of the original data (each row of $`Y`$) is a linear combination of the vectors $`s_1v^{(1)}, \ldots, s_rv^{(r)}`$.
+From this, we can see each original datum (each row of $`Y`$) is a linear combination of the vectors $`s_1v^{(1)}, \ldots, s_rv^{(r)}`$.
 The dependence on $\ell$ occurs only through the coefficients $`u_\ell^{(1)}, \ldots, u_\ell^{(r)}`$ of this linear combination.
 The interpretation is as follows:
  - The *right* singular vectors $`v^{(1)}, \ldots, v^{(r)}`$ are the "principal heatmaps." Every heay map in our dataset (i.e., every row of the data matrix $`Y`$) is a linear combination of them.
- - The coefficients $`s_1,\ldots,s_r`$ are expected to be have $`s_k \approx 0`$ for $`k`$ large. They are not included in the "principal heatmaps." Rather, they merely *down-weight* the later "principal heatmaps." 
- - The m-by-r matrix $`U`$ of *left* singular vectors is what needs to be predicted. They are what varies from sample to sample, for they are all that depends on $`\ell`$, which the row index of the data matrix.
- - When a vector of coefficients $`(a_1,\ldots,a_r)`$ is produced, the final prediction is $`a_1 s_1 v^{(1)} + ... + a_r s_r v^{(r)},`$. Thus, given a batch `A` of such vectors, i.e., a matrix with $`r`$ rows, the final batch of predictions is given by $`A S V^\intercal`$.
+ - The coefficients $`s_1,\ldots,s_r`$ are expected to be have $`s_k \approx 0`$ for $`k`$ large. They are not included in the "principal heatmaps." Rather, they merely *down-weight* the "principal heatmaps." 
+ - The m-by-r matrix $`U`$ of *left* singular vectors is what needs to be predicted. They are what varies from sample to sample, for they are all that depends on the row index $`\ell`$ of the data matrix.
+ - When a vector of coefficients $`(a_1,\ldots,a_r)`$ is produced by some predictive model, the final prediction is $`a_1 s_1 v^{(1)} + ... + a_r s_r v^{(r)}`$, which has the same shape (and meaning!) as one of the rows of $Y$. Thus, given a batch `A` of such vectors, i.e., a matrix with $`r`$ rows, the final batch of predictions is given by $`A S V^\intercal`$.
 
 In other words, the originally given data matrix `Y` is pre-processed with an SVD `Y = U @ S @ V.T` where `S` is diagonal. Then `S` and `V` are stored for the prediction phase, while the processed matrix `U` is treated as the data matrix for the purposes of training.
 After training, a batch prediction `P` with as many columns as `U` (but fewer rows: only as many as the batch size) can be re-converted into the same format as `Y` via `final_prediction = P @ S @ V.T`, each *row* of which should look like "the same kind of data" as each row of `Y` (in our case, a heatmap).
