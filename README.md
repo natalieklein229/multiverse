@@ -70,9 +70,18 @@ Different algorithms require different hyperparmeters, and these differences are
 At the time of writing, there are 4 python scripts in the `experiments` folder: `bnn.py`, `det_nn.py`, `gpr.py`, and `stein.py`. To train a model with the hyperparamters specified by the `.json` file, say, `my_hyperpars.json`, you can run the script from the command in the experiment folder using `python <algorithm>.py --json my_hyperparameters`.
 To see which hyperparameters are expected by the algorithm (which are the fields that you need to include in your .json file), check either the demo .json file included with the repo, or check the body the python script, where a dictionary called `hyperparameter_template` should be defined.
 
-## Using the SLOSH Dataset
+## The SLOSH Dataset
 
-This only works if you have the file `slosh_dat_nj.rda` located in the `experiments` folder (not included with the repo!).
+The SLOSH dataset can only by used if you have the file `slosh_dat_nj.rda` located in the `experiments` folder (**not included with the repo!**).
+
+The Y data of the slosh data set has m=4000 rows and n_y>49000 columns. Instead of training on the full dataset, we follow the PCA decomposition of [https://onlinelibrary.wiley.com/doi/epdf/10.1002/env.2796](https://onlinelibrary.wiley.com/doi/epdf/10.1002/env.2796).
+In the SVD $`Y = sum_{k<=r} s_k u_k v_k^T`$, the ell-th row of Y is $`a_1 s_1 v_1 + ... + a_r s_r v_r,`$ where a_k denotes the ell-th entry of u_k. Thus:
+ - The right singular vectors $`v_1,...,v_r`$ are the "principal heatmaps." Every other heay map Y[ell] is a linear combination of them.
+ - The m-by-r matrix U of left singular vectors is the processed data. They are what varies from sample to sample, since they are all that depends on ell (ell, being the row index of the data matrix Y, is the index of the sample).
+ - When a vector of coefficients a of length r is produced, the final prediction is $`a_1 s_1 v_1 + ... + a_r s_r v_r,`$. Thus, given a batch `A` of such vectors, i.e., a matrix with r rows, the final batch of predictions are given by the matrix-(diagonal matrix)-matrix product $`A S V^T`$
+
+In other words, the originally given data matrix `Y` is pre-processed with an SVD `Y = U @ S @ V.T` where `S` is diagonal. Then `S` and `V` are stored for the prediction phase, while the processed matrix `U` is treated as the data matrix for the purposes of training.
+After training, a batch prediction `P` with as many columns as `U` (but fewer rows: only as many as the batch size) can be re-converted into the same format as `Y` via `final_prediction = P @ S @ V.T`, each *row* of which should look like "the same kind of data" as each row of `Y` (in our case, a heatmap).
 
 ## Creating your own Dataset
 
