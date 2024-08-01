@@ -78,7 +78,7 @@ y_samples = bayesian_mlp.likelihood.sample(f_predictions)
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Try out different `x_train` and `y_train` in `univar_bnn_demo.py`.
 
 
-<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Ski_trail_rating_symbol-blue_square.svg/768px-Ski_trail_rating_symbol-blue_square.svg.png" width="16" height="16"> Do some multivariable toy problems _and_ visualize them using Michal's projection trick.
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Ski_trail_rating_symbol-blue_square.svg/768px-Ski_trail_rating_symbol-blue_square.svg.png" width="16" height="16"> Do some multivariable toy problems and visualize them using Michael's projection trick.
 
 
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Ski_trail_rating_symbol-green_circle.svg/800px-Ski_trail_rating_symbol-green_circle.svg.png" width="16" height="16"> Experiment more with the effect that the SSGE hyperparameters J and M have on the fBNN.
