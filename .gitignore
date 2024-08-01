@@ -332,6 +332,6 @@ cython_debug/
 *.png
 *.jpg
 .DS_Store
-*.rda
+*.rda  # the SLOSH dataset
 *.json
-*coastline*
+*ne_10m_coastline*   # data for adding the black coastline to visual renderings of the SLOSH "heightmaps"
