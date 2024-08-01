@@ -14,7 +14,6 @@ from matplotlib import pyplot as plt
 # ~~~ The guts of the model
 from SequentialGaussianBNN import SequentialGaussianBNN, log_gaussian_pdf
 from SSGE import SpectralSteinEstimator as SSGE
-from SSGE import BaseScoreEstimator as SSGE_backend
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
