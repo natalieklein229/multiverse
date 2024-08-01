@@ -32,6 +32,7 @@ for t in trange(500):
         if plot_g:
             _ = plt.plot( x_train, g, "--", color="orange" ) # true posterior density function
             _ = plt.title(f"The function g_{t} which needs to be minimized")
+            _ = plt.xlim([-0.01,2*torch.pi+0.01])
         else:
             _ = plt.plot( x_train, y_train/(2*torch.pi), "--", color="green", label="True Post." ) # true posterior density function
             _ = plt.plot( x_train, q, "-",  color="blue", label="Approx. Post." ) # approximate posterior density function
