@@ -20,8 +20,6 @@ except:
     percentage_of_variance_explained = s_squared.cumsum(dim=0)/s_squared.sum()
     r = (percentage_of_variance_explained<.99).int().argmin().item()    # ~~~ the first index at which percentage_of_variance_explained>=.99
     U, s, V = torch.linalg.svd(data_matrix)
-    # torch.manual_seed(2024)     # ~~~ torch.svd_lowrank is stochastic
-    # U, s, V = torch.svd_lowrank( data_matrix, r )
     # #
     # # ~~~ Question to self, why doesn't this seem to work?
     # U = evecs.flip(dims=(0,))
