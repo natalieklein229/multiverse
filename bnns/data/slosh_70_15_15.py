@@ -13,7 +13,7 @@ PATH = os.path.join( root, "bnns", "data", "slosh_dat_nj.rda" )
 if __name__ == "__main__":
     ans = input(f"    Is the path {PATH} correct?\n    Enter 'y' for yes, any other key for no.\n")
     if not ans.lower()=="y":
-        PATH = input(".   Please type the path without quotes and press enter:\n") # ~~~ e.g., /Users/winckelman/Downloads/slosh_dat_nj.rda
+        PATH = input("    Please type the path without quotes and press enter:\n") # ~~~ e.g., /Users/winckelman/Downloads/slosh_dat_nj.rda
 
 #
 # ~~~ Extract the data as numpy arrays
