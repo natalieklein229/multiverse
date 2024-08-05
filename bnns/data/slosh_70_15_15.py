@@ -23,7 +23,7 @@ inputs_np  =  DATA["inputs"].to_numpy()
 out_np     =     DATA["out"].to_numpy()
 
 #
-# ~~~ Compute indices for a train/val/test split
+# ~~~ Compute indices for a train/val/test split (same code as in slosh_70_15_15_centered_pca.py and slosh_70_15_15_standardized_pca.py)
 np.random.seed(2024)
 n_train = 2600
 n_test = 700
