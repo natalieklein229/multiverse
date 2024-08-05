@@ -11,7 +11,7 @@ from quality_of_life.my_torch_utils import convert_Tensors_to_Dataset
 root = find_root_dir_of_repo()
 PATH = os.path.join( root, "bnns", "data", "slosh_dat_nj.rda" )
 if __name__ == "__main__":
-    ans = input("    Is the path 'slosh_dat_nj.rda' correct?\n    Enter 'y' for yes, any other key for no.\n")
+    ans = input(f"    Is the path {PATH} correct?\n    Enter 'y' for yes, any other key for no.\n")
     if not ans.lower()=="y":
         PATH = input(".   Please type the path without quotes and press enter:\n") # ~~~ e.g., /Users/winckelman/Downloads/slosh_dat_nj.rda
 
