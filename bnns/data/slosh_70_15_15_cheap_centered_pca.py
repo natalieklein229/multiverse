@@ -5,9 +5,9 @@ import torch
 try:
     #
     # ~~~ Load the processed data
-    U = torch.load("slosh_centered_U.pt")
-    s = torch.load("slosh_centered_s.pt")
-    V = torch.load("slosh_centered_V.pt")
+    U = torch.load("slosh_cheap_centered_U.pt")
+    s = torch.load("slosh_cheap_centered_s.pt")
+    V = torch.load("slosh_cheap_centered_V.pt")
 except:
     #
     # ~~~ Load the unprocessed data
@@ -23,9 +23,9 @@ except:
     U, s, V = torch.svd_lowrank( data_matrix, r )
     #
     # ~~~ Save the processed data
-    torch.save( U, "slosh_centered_U.pt" )
-    torch.save( s, "slosh_centered_s.pt" )
-    torch.save( V, "slosh_centered_V.pt" )
+    torch.save( U, "slosh_cheap_centered_U.pt" )
+    torch.save( s, "slosh_cheap_centered_s.pt" )
+    torch.save( V, "slosh_cheap_centered_V.pt" )
 
 #
 # ~~~ Compute indices for a train/val/test split (same code as in slosh_70_15_15.py)
