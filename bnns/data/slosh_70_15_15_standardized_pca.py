@@ -1,13 +1,21 @@
 
 import numpy as np
 import torch
+import os
+from quality_of_life.my_torch_utils import convert_Tensors_to_Dataset
+from quality_of_life.my_base_utils import find_root_dir_of_repo
+
+#
+# ~~~ Establish the path to the folder `bnns/data`
+root = find_root_dir_of_repo()
+PATH = os.path.join( root, "bnns", "data" )
 
 try:
     #
     # ~~~ Load the processed data
-    U = torch.load("slosh_standardized_U.pt")
-    s = torch.load("slosh_standardized_s.pt")
-    V = torch.load("slosh_standardized_V.pt")
+    U = torch.load(os.path.join( PATH, "slosh_standardized_U.pt"))
+    s = torch.load(os.path.join( PATH, "slosh_standardized_s.pt"))
+    V = torch.load(os.path.join( PATH, "slosh_standardized_V.pt"))
 except:
     #
     # ~~~ Load the unprocessed data
@@ -28,9 +36,9 @@ except:
     # ((data_matrix-U@s.diag()@V.T)**2).mean()  # ~~~ should be small, like of the order 0.01
     #
     # ~~~ Save the processed data
-    torch.save( U, "slosh_standardized_U.pt" )
-    torch.save( s, "slosh_standardized_s.pt" )
-    torch.save( V, "slosh_standardized_V.pt" )
+    torch.save( U, os.path.join( PATH, "slosh_standardized_U.pt" ))
+    torch.save( s, os.path.join( PATH, "slosh_standardized_s.pt" ))
+    torch.save( V, os.path.join( PATH, "slosh_standardized_V.pt" ))
 
 #
 # ~~~ Compute indices for a train/val/test split (same code as in slosh_70_15_15.py)
