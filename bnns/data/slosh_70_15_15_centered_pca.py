@@ -20,7 +20,7 @@ except:
     percentage_of_variance_explained = s_squared.cumsum(dim=0)/s_squared.sum()
     r = (percentage_of_variance_explained<.99).int().argmin().item()    # ~~~ the first index at which percentage_of_variance_explained>=.99
     torch.manual_seed(2024)     # ~~~ torch.svd_lowrank is stochastic
-    U, s, V = torch.linalg.svd( data_matrix )
+    U, s, V = torch.linalg.svd( data_matrix, full_matrices=False )
     #
     # ~~~ Save the processed data
     torch.save( U, "slosh_centered_U.pt" )

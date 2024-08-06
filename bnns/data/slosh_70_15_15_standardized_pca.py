@@ -19,7 +19,7 @@ except:
     s_squared = evals.flip(dims=(0,)) # ~~~ the squared singular values of `data_matrix`
     percentage_of_variance_explained = s_squared.cumsum(dim=0)/s_squared.sum()
     r = (percentage_of_variance_explained<.99).int().argmin().item()    # ~~~ the first index at which percentage_of_variance_explained>=.99
-    U, s, V = torch.linalg.svd(data_matrix)
+    U, s, V = torch.linalg.svd( data_matrix, full_matrices=False )
     # #
     # # ~~~ Question to self, why doesn't this seem to work?
     # U = evecs.flip(dims=(0,))
