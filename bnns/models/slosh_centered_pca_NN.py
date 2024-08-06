@@ -1,7 +1,7 @@
 
 import torch
 from torch import nn
-slosh_70_15_15_cheap_centered_pca import r  # ~~~ the number of principal components: the output dimension of the NN
+from slosh_70_15_15_cheap_centered_pca import r  # ~~~ the number of principal components: the output dimension of the NN
 torch.manual_seed(2024)
 
 NN = nn.Sequential(
@@ -9,5 +9,5 @@ NN = nn.Sequential(
         nn.ReLU(),
         nn.Linear(500, 500),
         nn.ReLU(),
-        nn.Linear(500, r),
+        nn.Linear(500, r)
     )
