@@ -85,11 +85,10 @@ class SteinEnsemble:
 
 
 class SequentialSteinEnsemble(SteinEnsemble):
-    def __init__( self, architecture, n_copies, *args, **kwargs ):
-        some_device = "cuda" if torch.cuda.is_available() else "cpu"
+    def __init__( self, architecture, n_copies, device, *args, **kwargs ):
         super().__init__(
             list_of_NNs = [
-                nonredundant_copy_of_module_list( architecture, sequential=True ).to(some_device)
+                nonredundant_copy_of_module_list( architecture, sequential=True ).to(device)
                 for _ in range(n_copies)
             ],
             *args,
