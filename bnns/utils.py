@@ -66,27 +66,40 @@ def manual_Jacobian( inputs_to_the_final_layer, number_of_output_features ):
 #
 # ~~~ Compute the slope and intercept in linear regression
 def lm(y,x):
-    var = (x**2).mean() - x.mean()**2
-    slope = (x*y).mean()/var - x.mean()*y.mean()/var
-    intercept = y.mean() - slope*x.mean()
-    return slope, intercept
+    try:
+        var = (x**2).mean() - x.mean()**2
+        slope = (x*y).mean()/var - x.mean()*y.mean()/var
+        intercept = y.mean() - slope*x.mean()
+        return slope.item(), intercept.item()
+    except:
+        var = np.mean(x**2) - np.mean(x)**2
+        slope = np.mean(x*y)/var - np.mean(x)*np.mean(y)/var
+        intercept = np.mean(y) - slope*np.mean(x)
+        return slope, intercept
+        
 
 #
 # ~~~ Compute the empirical correlation coefficient between two vectors
 def cor(u,w):
-    stdstd = ((u**2).mean() - u.mean()**2).sqrt() * ((w**2).mean() - w.mean()**2).sqrt()
-    return (u*w).mean()/stdstd - u.mean()*w.mean()/stdstd
+    try:
+        stdstd = ((u**2).mean() - u.mean()**2).sqrt() * ((w**2).mean() - w.mean()**2).sqrt()
+        return (u*w).mean()/stdstd - u.mean()*w.mean()/stdstd
+    except:
+        return np.corrcoef(u,w)[0,1]
 
 #
 # ~~~ Compute an empirical 95% confidence interval
-iqr = lambda tensor, dim=-1: tensor.quantile( q=torch.Tensor([0.05,0.95]), dim=dim ).diff(dim=0)
+iqr = lambda tensor, dim=-1: tensor.quantile( q=torch.Tensor([0.25,0.75]).to(tensor.device), dim=dim ).diff(dim=0).flatten()
 
 #
 # ~~~ Do polynomial regression
 def univar_poly_fit( x, y, degree=1 ):
-    x = x.detach().cpu().numpy()
-    y = y.detach().cpu().numpy()
-    coeffs = np.polyfit( x, y, degree )
+    try:
+        x = x.detach().cpu().numpy()
+        y = y.detach().cpu().numpy()
+    except:
+        pass
+    coeffs = np.polyfit( x, y, deg=degree )
     poly = np.poly1d(coeffs)
     R_squared = cor(poly(x),y)**2
     return poly, coeffs, R_squared
@@ -373,7 +386,7 @@ def plot_bnn_mean_and_std(
 def empirical_quantile( predictions, grid, ax, extra_std, alpha=0.2, how_many_individual_predictions=6, **kwargs ):
     #
     # ~~~ Extract summary stats from `predictions` assuming that each *column* of `predictions` is a sample from the posterior predictive distribution
-    lo,med,hi = ( predictions + extra_std*torch.randn_like(predictions) ).quantile( q=torch.Tensor([0.05,0.5,0.95]), dim=-1 )
+    lo,med,hi = ( predictions + extra_std*torch.randn_like(predictions) ).quantile( q=torch.Tensor([0.025,0.5,0.975]).to(predictions.device), dim=-1 )
     #
     # ~~~ Graph the median as a blue curve
     _, = ax.plot( grid.cpu(), med.cpu(), label="Posterior Predictive Median", linestyle="-", linewidth=( 0.7 if how_many_individual_predictions>0 else 0.5 ), color="blue" )
