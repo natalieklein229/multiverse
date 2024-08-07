@@ -124,7 +124,7 @@ data_is_univariate = (D_train[0][0].numel()==1)
 X,_ = next(iter(torch.utils.data.DataLoader( D_train, batch_size=10 )))
 with torch.no_grad():
     difference = NN(X)-NN(X)
-    droupout = (difference.abs().mean()>0).item()
+    dropout = (difference.abs().mean()>0).item()
 
 
 
@@ -153,9 +153,12 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
         # ~~~ The actual training logic (totally conventional, hopefully familiar)
         for X, y in dataloader:
             X, y = X.to(DEVICE), y.to(DEVICE)
-            loss = 0.
-            for _ in range(n_MC_samples):
-                loss += loss_fn(NN(X),y)/n_MC_samples
+            if dropout:
+                loss = 0.
+                for _ in range(n_MC_samples):
+                    loss += loss_fn(NN(X),y)/n_MC_samples
+            else:
+                loss = loss_fn(NN(X),y)
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
@@ -197,12 +200,8 @@ if data.__name__ == "bnns.data.bivar_trivial":
 #
 # ~~~ Compute the posterior predictive distribution on the testing dataset
 x_test, y_test = convert_Dataset_to_Tensors(D_test)
-if dropout:
-    predictions = torch.column_stack([ NN(x_test).flatten() for _ in range(n_posterior_samples_evaluation) ])
-    if extra_std:
-        predictions += BNN.conditional_std*torch.randn_like(predictions)
-else:
-    predictions = NN(x_test).flatten()
+predictions = torch.column_stack([ NN(x_test).flatten() for _ in range(n_posterior_samples_evaluation) ]) if dropout else NN(x_test).flatten()
+
 
 hyperparameters["metric"] = "here, we will record metrics"
 
