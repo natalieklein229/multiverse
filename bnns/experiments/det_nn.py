@@ -16,11 +16,12 @@ import sys
 #
 # ~~~ Package-specific utils
 from bnns.utils import plot_nn, plot_bnn_mean_and_std, plot_bnn_empirical_quantiles, generate_json_filename, set_Dataset_attributes
+from bnns.metrics import *
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
 from quality_of_life.my_visualization_utils import GifMaker
-from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict, my_warn
+from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict, print_dict, my_warn
 from quality_of_life.my_torch_utils         import convert_Dataset_to_Tensors
 
 
@@ -59,7 +60,8 @@ hyperparameter_template = {
     "n_posterior_samples" : 100,            # ~~~ for dropout, how many samples to use to make the empirical distributions for plotting
     #
     # ~~~ For metrics and visualization
-    "n_posterior_samples_evaluation" : 1000
+    "n_posterior_samples_evaluation" : 1000,
+    "show_diagnostics" : True
 }
 
 #
@@ -217,16 +219,34 @@ if data.__name__ == "bnns.data.bivar_trivial":
 
 
 ### ~~~
-## ~~~ Evaluate the trained model
+## ~~~ Metrics (evaluate the trained model)
 ### ~~~
 
 #
 # ~~~ Compute the posterior predictive distribution on the testing dataset
-x_test, y_test = convert_Dataset_to_Tensors(D_test)
+x_train, y_train  =  convert_Dataset_to_Tensors(D_train)
+x_test, y_test    =    convert_Dataset_to_Tensors(D_test)
 predictions = torch.column_stack([ NN(x_test).flatten() for _ in range(n_posterior_samples_evaluation) ]) if dropout else NN(x_test).flatten()
 
+if dropout:
+    hyperparameters["METRIC_mse_of_median"]  =  mse_of_median( predictions, y_test )
+    hyperparameters["METRIC_mse_of_mean"]    =    mse_of_mean( predictions, y_test )
+    hyperparameters["METRIC_mae_of_median"]  =  mae_of_median( predictions, y_test )
+    hyperparameters["METRIC_mae_of_mean"]    =    mae_of_mean( predictions, y_test )
+    hyperparameters["METRIC_max_norm_of_median"]  =  max_norm_of_median( predictions, y_test )
+    hyperparameters["METRIC_max_norm_of_mean"]    =    max_norm_of_mean( predictions, y_test )
+    for estimator in ("mean","median"):
+        hyperparameters[f"METRIC_uncertainty_vs_proximity_slope_{estimator}"], hyperparameters[f"METRIC_uncertainty_vs_proximity_cor_{estimator}"]  =  uncertainty_vs_proximity( predictions, y_test, (estimator=="median"), x_test, x_train, show=show_diagnostics )
+        hyperparameters[f"METRIC_uncertainty_vs_accuracy_slope_{estimator}"], hyperparameters[f"METRIC_uncertainty_vs_accuracy_cor_{estimator}"]    =    uncertainty_vs_accuracy( predictions, y_test, quantile_uncertainty=visualize_bnn_using_quantiles, quantile_accuracy=(estimator=="median"), show=show_diagnostics )
+else:
+    hyperparameters["METRIC_mse"] = mse( NN, x_test, y_test )
+    hyperparameters["METRIC_mae"] = mae( NN, x_test, y_test )
+    hyperparameters["METRIC_max_norm"] = max_norm( NN, x_test, y_test )
 
-hyperparameters["metric"] = "here, we will record metrics"
+#
+# ~~~ Display the results
+print_dict(hyperparameters)
+
 
 
 
