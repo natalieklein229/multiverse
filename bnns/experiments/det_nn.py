@@ -15,7 +15,7 @@ import sys
 
 #
 # ~~~ Package-specific utils
-from bnns.utils import plot_nn, generate_json_filename, set_Dataset_attributes
+from bnns.utils import plot_nn, plot_bnn_mean_and_std, plot_bnn_empirical_quantiles, generate_json_filename, set_Dataset_attributes
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
@@ -47,14 +47,16 @@ hyperparameter_template = {
     "lr" : 0.0005,
     "batch_size" : 64,
     "n_epochs" : 200,
-    "n_MC_samples" : 1,                 # ~~~ relevant for droupout
+    "n_MC_samples" : 1,                     # ~~~ relevant for droupout
     #
     # ~~~ For visualization
     "make_gif" : True,
-    "how_often" : 10,                   # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
-    "initial_frame_repetitions" : 24,   # ~~~ for how many frames should the state of initialization be rendered
-    "final_frame_repetitions" : 48,     # ~~~ for how many frames should the state after training be rendered
+    "how_often" : 10,                       # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
+    "initial_frame_repetitions" : 24,       # ~~~ for how many frames should the state of initialization be rendered
+    "final_frame_repetitions" : 48,         # ~~~ for how many frames should the state after training be rendered
     "how_many_individual_predictions" : 6,  # ~~~ how many posterior predictive samples to plot
+    "visualize_bnn_using_quantiles" : True, # ~~~ for dropout, if False, use mean +/- two standard deviatiations; if True, use empirical median and 95% quantile
+    "n_posterior_samples" : 100,            # ~~~ for dropout, how many samples to use to make the empirical distributions for plotting
     #
     # ~~~ For metrics and visualization
     "n_posterior_samples_evaluation" : 1000
@@ -132,9 +134,15 @@ with torch.no_grad():
 ## ~~~ Train a conventional neural network, for reference
 ### ~~~
 
+#
+# ~~~ The optimizer, dataloader, and loss function
 optimizer = Optimizer( NN.parameters(), lr=lr )
 dataloader = torch.utils.data.DataLoader( D_train, batch_size=batch_size )
 loss_fn = nn.MSELoss()
+
+#
+# ~~~ Some naming stuff
+description_of_the_experiment = "Conventional, Deterministic Training" if not dropout else "Conventional Training of a Neural Network with Dropout"
 
 #
 # ~~~ Some plotting stuff
@@ -143,12 +151,27 @@ if data_is_univariate:
     green_curve =  data.y_test.cpu().squeeze()
     x_train_cpu = data.x_train.cpu()
     y_train_cpu = data.y_train.cpu().squeeze()
+    if dropout:
+        #
+        # ~~~ Override the plotting routine `plot_nn` by defining instead a routine which 
+        plot_predictions = plot_bnn_empirical_quantiles if visualize_bnn_using_quantiles else plot_bnn_mean_and_std
+        def plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, nn, extra_std=0., how_many_individual_predictions=how_many_individual_predictions, n_posterior_samples=n_posterior_samples, title=description_of_the_experiment ):
+            #
+            # ~~~ Draw from the predictive distribuion
+            with torch.no_grad():
+                predictions = torch.column_stack([ nn(grid) for _ in range(n_posterior_samples) ])
+            return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, extra_std, how_many_individual_predictions, title )
+    #
+    # ~~~ Plot the state of the model upon its initialization
     if make_gif:
+        gif = GifMaker()      # ~~~ essentially just a list of images
         fig,ax = plt.subplots(figsize=(12,6))
-        gif = GifMaker()
+        fig,ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN )
+        for j in range(initial_frame_repetitions):
+            gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
-    for e in trange( n_epochs, ascii=' >=', desc="Conventional, Deterministic Training" ):
+    for e in trange( n_epochs, ascii=' >=', desc=description_of_the_experiment ):
         #
         # ~~~ The actual training logic (totally conventional, hopefully familiar)
         for X, y in dataloader:
@@ -165,7 +188,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
         #
         # ~~~ Plotting logic
         if data_is_univariate and make_gif and (e+1)%how_often==0:
-            fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
+            fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN )
             gif.capture()   # ~~~ save a picture of the current plot (whatever plt.show() would show)
 
 #
@@ -175,7 +198,7 @@ if data_is_univariate:
         gif.develop( destination="NN", fps=24 )
     else:
         fig,ax = plt.subplots(figsize=(12,6))
-        fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN=NN )
+        fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN )
         plt.show()
 
 #
