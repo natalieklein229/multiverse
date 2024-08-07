@@ -257,16 +257,17 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
                 projection_step(BNN)
             #
             # ~~~ Record some diagnostics
-            history["ELBO"].append( -negative_ELBO.item())
-            history["post"].append( log_posterior_density.item())
-            history["prior"].append(log_prior_density.item())
-            history["like"].append( log_likelihood_density.item())
-            to_print = {
-                "ELBO" : f"{-negative_ELBO.item():<4.2f}",
-                "post" : f"{log_posterior_density.item():<4.2f}",
-                "prior": f"{log_prior_density.item():<4.2f}",
-                "like" : f"{log_likelihood_density.item():<4.2f}"
-            }
+            # history["ELBO"].append( -negative_ELBO.item())
+            # history["post"].append( log_posterior_density.item())
+            # history["prior"].append(log_prior_density.item())
+            # history["like"].append( log_likelihood_density.item())
+            # to_print = {
+            #     "ELBO" : f"{-negative_ELBO.item():<4.2f}",
+            #     "post" : f"{log_posterior_density.item():<4.2f}",
+            #     "prior": f"{log_prior_density.item():<4.2f}",
+            #     "like" : f"{log_likelihood_density.item():<4.2f}"
+            # }
+            to_print = { "neg. lik." : f"{-log_likelihood_density.item():<4.2f}" }
             pbar.set_postfix(to_print)
             _ = pbar.update()
         #

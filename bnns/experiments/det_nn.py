@@ -173,7 +173,8 @@ if data_is_univariate:
             gif.capture( clear_frame_upon_capture=(j+1==initial_frame_repetitions) )
 
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
-    for e in trange( n_epochs, ascii=' >=', desc=description_of_the_experiment ):
+    pbar = tqdm( desc=description_of_the_experiment, total=n_epochs*len(dataloader), ascii=' >=' )
+    for e in range(n_epochs):
         #
         # ~~~ The actual training logic (totally conventional, hopefully familiar)
         for X, y in dataloader:
@@ -187,11 +188,15 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
+            pbar.set_postfix({ "loss": f"{loss.item():<4.2f}" })
+            _ = pbar.update()
         #
         # ~~~ Plotting logic
         if data_is_univariate and make_gif and (e+1)%how_often==0:
             fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN )
             gif.capture()   # ~~~ save a picture of the current plot (whatever plt.show() would show)
+
+pbar.close()
 
 #
 # ~~~ Afterwards, develop the .gif if applicable

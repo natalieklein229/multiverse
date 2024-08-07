@@ -16,6 +16,7 @@ import sys
 #
 # ~~~ The guts of the model
 from bnns.Stein_GD import SequentialSteinEnsemble as Ensemble
+from bnns.metrics import *
 
 #
 # ~~~ Package-specific utils
@@ -142,6 +143,7 @@ ensemble = Ensemble(
         n_copies = n_Stein_particles,
         Optimizer = lambda params: Optimizer( params, lr=lr ),
         conditional_std = torch.tensor(conditional_std),
+        device = DEVICE,
         bw = bw
     )
 
@@ -183,7 +185,8 @@ if data_is_univariate:
 # ~~~ Do the actual training loop
 K_history, grads_of_K_history = [], []
 with support_for_progress_bars():   # ~~~ this just supports green progress bars
-    for e in trange( n_epochs, ascii=' >=', desc=description_of_the_experiment ):
+    pbar = tqdm( desc=description_of_the_experiment, total=n_epochs*len(dataloader), ascii=' >=' )
+    for e in range(n_epochs):
         #
         # ~~~ Training logic
         for X, y in dataloader:
@@ -192,6 +195,9 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
             K, grads_of_K = ensemble.train_step(X,y)
             K_history.append( (torch.eye( *K.shape, device=K.device ) - K).abs().mean().item() )
             grads_of_K_history.append( grads_of_K.abs().mean().item() )
+            _ = pbar.update()
+        predictions = ensemble(X)
+        pbar.set_postfix({ "mse of mean": f"{mse_of_mean(predictions,y):<4.2f}" })
         #
         # ~~~ Plotting logic
         if make_gif and (e+1)%how_often==0:
@@ -231,7 +237,7 @@ if data_is_univariate:
 #
 # ~~~ Compute the posterior predictive distribution on the testing dataset
 x_test, y_test = convert_Dataset_to_Tensors(D_test)
-predictions = ensemble(x_test,resample_weights=True).flatten()
+predictions = ensemble(x_test).flatten()
 if extra_std:
     predictions += ensemble.conditional_std*torch.randn_like(predictions)
 
