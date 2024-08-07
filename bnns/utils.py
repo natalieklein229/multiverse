@@ -83,7 +83,7 @@ def lm(y,x):
 def cor(u,w):
     try:
         stdstd = ((u**2).mean() - u.mean()**2).sqrt() * ((w**2).mean() - w.mean()**2).sqrt()
-        return (u*w).mean()/stdstd - u.mean()*w.mean()/stdstd
+        return ((u*w).mean()/stdstd - u.mean()*w.mean()/stdstd).item()
     except:
         return np.corrcoef(u,w)[0,1]
 

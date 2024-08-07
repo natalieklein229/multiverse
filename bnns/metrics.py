@@ -6,52 +6,76 @@ from quality_of_life.my_base_utils          import my_warn
 from quality_of_life.my_visualization_utils import points_with_curves
 
 #
-# ~~~ Measure MSE of the predictive median relative
+# ~~~ Measure MSE of a deterministic model with error=model(x_test)-y_test
 def mse( model, x_test, y_test ):
     with torch.no_grad():
-        return ((model(x_test)-y_test)**2).mean()
+        return (( model(x_test).flatten() - y_test.flatten() )**2).mean().item()
 
 #
-# ~~~ Measure MAE of the predictive median relative
+# ~~~ Measure MAE of a deterministic model with error=model(x_test)-y_test
 def mae( model, x_test, y_test ):
     with torch.no_grad():
-        return (model(x_test)-y_test).abs().mean()
+        return ( model(x_test).flatten() - y_test.flatten() ).abs().mean().item()
 
 #
-# ~~~ Measure MSE of the predictive median relative 
+# ~~~ Measure max norm of a deterministic model with error=model(x_test)-y_test
+def max_norm( model, x_test, y_test ):
+    with torch.no_grad():
+        return ( model(x_test).flatten() - y_test.flatten() ).abs().max().item()
+
+#
+# ~~~ Measure MSE of the predictive median
 def mse_of_median( predictions, y_test ):
     with torch.no_grad():
         y_test = y_test.flatten()
         pred = predictions.median(dim=-1).values
         assert pred.shape == y_test.shape
-        return (( pred - y_test )**2).mean()
+        return (( pred - y_test )**2).mean().item()
 
 #
-# ~~~ Measure MSE of a model on a pair (X,y) of tensors
-def mse_of_mean( predictions, y_test ):
-    with torch.no_grad():
-        y_test = y_test.flatten()
-        pred = predictions.mean(dim=-1)
-        assert pred.shape == y_test.shape
-        return (( pred - y_test )**2).mean()
-
-#
-# ~~~ Measure MSE of the predictive median relative 
+# ~~~ Measure MAE of the predictive median 
 def mae_of_median( predictions, y_test ):
     with torch.no_grad():
         y_test = y_test.flatten()
         pred = predictions.median(dim=-1).values
         assert pred.shape == y_test.shape
-        return ( pred - y_test ).abs().mean()
+        return ( pred - y_test ).abs().mean().item()
 
 #
-# ~~~ Measure MSE of a model on a pair (X,y) of tensors
+# ~~~ Measure max norm of the predictive median 
+def max_norm_of_median( predictions, y_test ):
+    with torch.no_grad():
+        y_test = y_test.flatten()
+        pred = predictions.median(dim=-1).values
+        assert pred.shape == y_test.shape
+        return ( pred - y_test ).abs().max().item()
+
+#
+# ~~~ Measure MSE of the predictive mean
+def mse_of_mean( predictions, y_test ):
+    with torch.no_grad():
+        y_test = y_test.flatten()
+        pred = predictions.mean(dim=-1)
+        assert pred.shape == y_test.shape
+        return (( pred - y_test )**2).mean().item()
+
+#
+# ~~~ Measure MAE of the predictive mean
 def mae_of_mean( predictions, y_test ):
     with torch.no_grad():
         y_test = y_test.flatten()
         pred = predictions.mean(dim=-1)
         assert pred.shape == y_test.shape
-        return ( pred - y_test ).abs().mean()
+        return ( pred - y_test ).abs().mean().item()
+
+#
+# ~~~ Measure max norm of the predictive mean
+def max_norm_of_mean( predictions, y_test ):
+    with torch.no_grad():
+        y_test = y_test.flatten()
+        pred = predictions.mean(dim=-1)
+        assert pred.shape == y_test.shape
+        return ( pred - y_test ).abs().max().item()
 
 # #
 # # ~~~ Measure MSE of the predictive median relative 
@@ -83,7 +107,7 @@ def uncertainty_vs_accuracy( predictions, y_test, quantile_uncertainty, quantile
         accuracy     =     accuracy.cpu().numpy()
         #
         # ~~~ Use polynomial regression to measure the strength of the relation uncertainty~accuracy
-        fits = [ univar_poly_fit( y=uncertainty, x=accuracy, degree=k ) for k in (1,2,3,4) ]
+        fits = [ univar_poly_fit( y=uncertainty, x=accuracy, degree=k ) for k in (1,2,3) ]
         polys = [ fit[0] for fit in fits ]
         R_squared_coefficients = [ fit[2] for fit in fits ]
         if show:
@@ -118,7 +142,7 @@ def uncertainty_vs_proximity( predictions, y_test, quantile_uncertainty, x_test,
         proximity    =    proximity.cpu().numpy()
         #
         # ~~~ Use polynomial regression to measure the strength of the relation uncertainty~proximity
-        fits = [ univar_poly_fit( y=uncertainty, x=proximity, degree=k ) for k in (1,2,3,4) ]
+        fits = [ univar_poly_fit( y=uncertainty, x=proximity, degree=k ) for k in (1,2,3) ]
         polys = [ fit[0] for fit in fits ]
         R_squared_coefficients = [ fit[2] for fit in fits ]
         if show:
