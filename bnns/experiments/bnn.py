@@ -26,6 +26,7 @@ from quality_of_life.my_torch_utils import convert_Dataset_to_Tensors
 from quality_of_life.my_visualization_utils import GifMaker
 from quality_of_life.my_numpy_utils         import moving_average
 from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict, my_warn
+from quality_of_life.my_torch_utils         import convert_Dataset_to_Tensors
 
 
 
@@ -321,6 +322,15 @@ if data.__name__ == "bnns.data.bivar_trivial":
 ## ~~~ Evaluate the trained model
 ### ~~~
 
+#
+# ~~~ Compute the posterior predictive distribution on the testing dataset
+x_test, y_test = convert_Dataset_to_Tensors(D_test)
+predictions = torch.column_stack([ BNN(x_test,resample_weights=True).flatten() for _ in range(n_posterior_samples_evaluation) ])
+if extra_std:
+    predictions += BNN.conditional_std*torch.randn_like(predictions)
+
+#
+# ~~~ Evaluate the quality of the predictive distribution
 hyperparameters["metric"] = "here, we will record metrics"
 
 

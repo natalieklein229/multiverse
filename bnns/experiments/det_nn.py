@@ -21,6 +21,7 @@ from bnns.utils import plot_nn, generate_json_filename, set_Dataset_attributes
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
 from quality_of_life.my_visualization_utils import GifMaker
 from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict, my_warn
+from quality_of_life.my_torch_utils         import convert_Dataset_to_Tensors
 
 
 
@@ -32,7 +33,7 @@ from quality_of_life.my_base_utils          import support_for_progress_bars, di
 # ~~~ Template for what the dictionary of hyperparmeters should look like
 hyperparameter_template = {
     #
-    # ~~~ MIsc.
+    # ~~~ Misc.
     "DEVICE" : "cpu",
     "dtype" : "float",
     "seed" : 2024,
@@ -46,12 +47,17 @@ hyperparameter_template = {
     "lr" : 0.0005,
     "batch_size" : 64,
     "n_epochs" : 200,
+    "n_MC_samples" : 1,                 # ~~~ relevant for droupout
     #
     # ~~~ For visualization
     "make_gif" : True,
     "how_often" : 10,                   # ~~~ how many snap shots in total should be taken throughout training (each snap-shot being a frame in the .gif)
     "initial_frame_repetitions" : 24,   # ~~~ for how many frames should the state of initialization be rendered
     "final_frame_repetitions" : 48,     # ~~~ for how many frames should the state after training be rendered
+    "how_many_individual_predictions" : 6,  # ~~~ how many posterior predictive samples to plot
+    #
+    # ~~~ For metrics and visualization
+    "n_posterior_samples_evaluation" : 1000
 }
 
 #
@@ -81,6 +87,7 @@ hyperparameters = json_to_dict(input_json_filename)
 #
 # ~~~ Load the dictionary's key/value pairs into the global namespace
 globals().update(hyperparameters)       # ~~~ e.g., if hyperparameters=={ "a":1, "B":2 }, then this defines a=1 and B=2
+
 
 #
 # ~~~ Might as well fix a seed, e.g., for randomly shuffling the order of batches during training
@@ -112,6 +119,13 @@ D_train = set_Dataset_attributes( data.D_train, device=DEVICE, dtype=dtype )
 D_test  =  set_Dataset_attributes( data.D_val, device=DEVICE, dtype=dtype ) # ~~~ for hyperparameter evaulation and such, use the validation set instead of the "true" test set
 data_is_univariate = (D_train[0][0].numel()==1)
 
+#
+# ~~~ Infer whether or not the model's forward pass is stochastic (e.g., whether or not it's using dropout)
+X,_ = next(iter(torch.utils.data.DataLoader( D_train, batch_size=10 )))
+with torch.no_grad():
+    difference = NN(X)-NN(X)
+    droupout = (difference.abs().mean()>0).item()
+
 
 
 ### ~~~
@@ -139,7 +153,9 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
         # ~~~ The actual training logic (totally conventional, hopefully familiar)
         for X, y in dataloader:
             X, y = X.to(DEVICE), y.to(DEVICE)
-            loss = loss_fn(NN(X),y)
+            loss = 0.
+            for _ in range(n_MC_samples):
+                loss += loss_fn(NN(X),y)/n_MC_samples
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
@@ -177,6 +193,16 @@ if data.__name__ == "bnns.data.bivar_trivial":
 ### ~~~
 ## ~~~ Evaluate the trained model
 ### ~~~
+
+#
+# ~~~ Compute the posterior predictive distribution on the testing dataset
+x_test, y_test = convert_Dataset_to_Tensors(D_test)
+if dropout:
+    predictions = torch.column_stack([ NN(x_test).flatten() for _ in range(n_posterior_samples_evaluation) ])
+    if extra_std:
+        predictions += BNN.conditional_std*torch.randn_like(predictions)
+else:
+    predictions = NN(x_test).flatten()
 
 hyperparameters["metric"] = "here, we will record metrics"
 

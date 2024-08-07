@@ -63,6 +63,34 @@ def manual_Jacobian( inputs_to_the_final_layer, number_of_output_features ):
     result = tiled_I.unsqueeze(-1) * tiled_V.unsqueeze(1)
     return result.view( total_number_of_predictions, -1 )
 
+#
+# ~~~ Compute the slope and intercept in linear regression
+def lm(y,x):
+    var = (x**2).mean() - x.mean()**2
+    slope = (x*y).mean()/var - x.mean()*y.mean()/var
+    intercept = y.mean() - slope*x.mean()
+    return slope, intercept
+
+#
+# ~~~ Compute the empirical correlation coefficient between two vectors
+def cor(u,w):
+    stdstd = ((u**2).mean() - u.mean()**2).sqrt() * ((w**2).mean() - w.mean()**2).sqrt()
+    return (u*w).mean()/stdstd - u.mean()*w.mean()/stdstd
+
+#
+# ~~~ Compute an empirical 95% confidence interval
+iqr = lambda tensor, dim=-1: tensor.quantile( q=torch.Tensor([0.05,0.95]), dim=dim ).diff(dim=0)
+
+#
+# ~~~ Do polynomial regression
+def univar_poly_fit( x, y, degree=1 ):
+    x = x.detach().cpu().numpy()
+    y = y.detach().cpu().numpy()
+    coeffs = np.polyfit( x, y, degree )
+    poly = np.poly1d(coeffs)
+    R_squared = cor(poly(x),y)**2
+    return poly, coeffs, R_squared
+
 
 
 ### ~~~
@@ -393,12 +421,4 @@ def plot_bnn_empirical_quantiles(
             **kwargs
         )
 
-
-    # #
-    # # ~~~ Draw from the posterior predictive distribuion
-    # example_output = model( grid, resample_weights=False )
-    # predictions = torch.column_stack([
-    #         model(grid,resample_weights=True) + conditional_std*torch.randn_like(example_output)
-    #         for _ in range(n_samples)
-    #     ])
 
