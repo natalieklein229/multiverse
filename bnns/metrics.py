@@ -6,6 +6,18 @@ from quality_of_life.my_base_utils          import my_warn
 from quality_of_life.my_visualization_utils import points_with_curves
 
 #
+# ~~~ Measure MSE of the predictive median relative
+def mse( model, x_test, y_test ):
+    with torch.no_grad():
+        return ((model(x_test)-y_test)**2).mean()
+
+#
+# ~~~ Measure MAE of the predictive median relative
+def mae( model, x_test, y_test ):
+    with torch.no_grad():
+        return (model(x_test)-y_test).abs().mean()
+
+#
 # ~~~ Measure MSE of the predictive median relative 
 def mse_of_median( predictions, y_test ):
     with torch.no_grad():
@@ -22,6 +34,24 @@ def mse_of_mean( predictions, y_test ):
         pred = predictions.mean(dim=-1)
         assert pred.shape == y_test.shape
         return (( pred - y_test )**2).mean()
+
+#
+# ~~~ Measure MSE of the predictive median relative 
+def mae_of_median( predictions, y_test ):
+    with torch.no_grad():
+        y_test = y_test.flatten()
+        pred = predictions.median(dim=-1).values
+        assert pred.shape == y_test.shape
+        return ( pred - y_test ).abs().mean()
+
+#
+# ~~~ Measure MSE of a model on a pair (X,y) of tensors
+def mae_of_mean( predictions, y_test ):
+    with torch.no_grad():
+        y_test = y_test.flatten()
+        pred = predictions.mean(dim=-1)
+        assert pred.shape == y_test.shape
+        return ( pred - y_test ).abs().mean()
 
 # #
 # # ~~~ Measure MSE of the predictive median relative 
