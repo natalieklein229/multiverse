@@ -267,7 +267,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
             #     "prior": f"{log_prior_density.item():<4.2f}",
             #     "like" : f"{log_likelihood_density.item():<4.2f}"
             # }
-            to_print = { "neg. lik." : f"{-log_likelihood_density.item():<4.2f}" }
+            to_print = { "neg. log. lik." : f"{-log_likelihood_density.item():<4.2f}" }
             pbar.set_postfix(to_print)
             _ = pbar.update()
         #
@@ -295,10 +295,13 @@ if data_is_univariate:
 #
 # ~~~ Validate implementation of the algorithm on the synthetic dataset "bivar_trivial"
 if data.__name__ == "bnns.data.bivar_trivial":
-    from bnns.data.univar_missing_middle import x_test, y_test
+    x_test = data.D_test.X.to( device=DEVICE, dtype=dtype )
+    y_test = data.D_test.y.to( device=DEVICE, dtype=dtype )
+    with torch.no_grad():
+        predictions = torch.column_stack([ BNN(x_test,resample_weights=True).mean(dim=-1) for _ in range(n_posterior_samples_evaluation) ])
     fig,ax = plt.subplots(figsize=(12,6))
     plt.plot( x_test.cpu(), y_test.cpu(), "--", color="green" )
-    y_pred = BNN(data.D_test.X).detach().mean(dim=-1)
+    y_pred = predictions.mean(dim=-1)
     plt.plot( x_test.cpu(), y_pred.cpu(), "-", color="blue" )
     fig.suptitle("If these lines roughly match, then the algorithm is surely working correctly")
     ax.grid()
