@@ -162,7 +162,7 @@ class SequentialGaussianBNN(nn.Module):
     # ~~~ NEW
     def setup_prior_SSGE(self):
         with torch.no_grad():
-            prior_samples = torch.column_stack([ self.prior_forward( self.measurement_set ) for _ in range(self.prior_M) ]).T
+            prior_samples = torch.row_stack([ self.prior_forward(self.measurement_set).flatten() for _ in range(self.prior_M) ])
             try:
                 self.prior_SSGE = SSGE( samples=prior_samples, eta=self.prior_eta, J=self.prior_J, h=self.use_eigh )
             except RuntimeError:
@@ -186,11 +186,11 @@ class SequentialGaussianBNN(nn.Module):
         with torch.no_grad():
             if self.prior_SSGE is None:
                 self.setup_prior_SSGE()
-            posterior_samples = torch.column_stack([ self( self.measurement_set ) for _ in range(self.post_M) ]).T
+            posterior_samples = torch.row_stack([ self( self.measurement_set ).flatten() for _ in range(self.post_M) ])
             posterior_SSGE = SSGE( samples=posterior_samples, eta=self.post_eta, J=self.post_J, h=self.use_eigh )
         #
         # ~~~ By the chain rule, at these points we must (use SSGE to) compute the scores          
-        yhat = self( self.measurement_set )
+        yhat = self( self.measurement_set ).flatten()
         #
         # ~~~ Use SSGE to compute "the intractible parts of the chain rule"
         with torch.no_grad():
