@@ -5,7 +5,7 @@ from bnns.SSGE import SpectralSteinEstimator as SSGE
 
 M = 3000
 d = 100
-samples = torch.randn( M, 100, device = "cuda" if torch.cuda.is_available() else "cpu" )
+samples = torch.randn( M, d, device = "cuda" if torch.cuda.is_available() else "cpu" )
 
 #
 # ~~~ Time the new method
