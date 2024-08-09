@@ -46,9 +46,9 @@ y_samples = bayesian_mlp.likelihood.sample(f_predictions)
 
 # Setup
 
-## Setup steps using anaconda on MacOS
+## Setup steps using anaconda
 
-(on windows, I think the only difference is that you need to use `copy` instead of `cp`?)
+(without anaconda, just make sure you have the prerequisite packages installed)
 
 0. Open the terminal and say `conda env list` to confirm that the code is not present already.
 
