@@ -20,10 +20,8 @@ class BaseScoreEstimator:
         return torch.exp( -((x1-x2).pow(2).sum(-1)) / (2*sigma**2) ) # / math.sqrt(2*torch.pi) * sigma
     #
     # ~~~ Method that assembles the kernel matrix K
-    def gram_matrix( self, x1, x2, sigma ):
-        x1 = x1.unsqueeze(-2) # Make it into a column tensor
-        x2 = x2.unsqueeze(-3) # Make it into a row tensor
-        return self.rbf_kernel(x1,x2,sigma)
+    def gram_matrix( self, x1, x2, sigma ):     # ~~~ e = torch.exp( -((x1.unsqueeze(-2)-x2.unsqueeze(-3)).pow(2).sum(-1)) / (2*sigma**2) ) - torch.exp( -(torch.cdist(x1,x2)/sigma)**2/2 ) \approx 0
+        return torch.exp( -(torch.cdist(x1,x2)/sigma)**2/2 )
     #
     # ~~~ Method that gram matrix, as well as, the Jacobian matrices which get averaged when computing \beta
     def grad_gram( self, x1, x2, sigma ):
@@ -64,11 +62,7 @@ class BaseScoreEstimator:
         # :return:
         # """
         with torch.no_grad():
-            x1 = x1.unsqueeze(-2)   # Make it into a column tensor
-            x2 = x2.unsqueeze(-3)  # Make it into a row tensor
-            pdist_mat = ((x1-x2)**2).sum(dim = -1).sqrt() # [N x M]
-            kernel_width = torch.median(torch.flatten(pdist_mat))
-            return kernel_width
+            return torch.cdist(x1,x2).median()
     #
     # ~~~ Placeholder method for the content of __call__(...)
     @abstractmethod
@@ -83,38 +77,42 @@ class BaseScoreEstimator:
 class SpectralSteinEstimator(BaseScoreEstimator):
     #
     # ~~~ Allow the user to specify eta for numerical stability as well as J for numerical fidelity
-    def __init__( self, samples, eta=None, J=None, sigma=None, h=True ):
+    def __init__( self, samples, eta=None, J=None, sigma=None, h=True, old=False ):
         self.eta = eta
         self.num_eigs = J
         self.samples = samples
         self.h = h
         self.M = torch.tensor( samples.size(-2), dtype=samples.dtype, device=samples.device )
         self.sigma = self.heuristic_sigma(self.samples,self.samples) if sigma is None else sigma
-        self.eigen_decomposition()
+        self.eigen_decomposition(old=old)
     #
     # ~~~ NEW
-    def eigen_decomposition(self):
+    def eigen_decomposition(self,old=False):
         with torch.no_grad():
             #
             # ~~~ Build the kernel matrix, as well as the associated Jacobians
             xm = self.samples
-            self.K, self.K_Jacobians = self.grad_gram( xm, xm, self.sigma )
-            self.avg_jac = self.K_Jacobians.mean(dim=-3) # [M x D]
+            if old:
+                K, K_Jacobians = self.grad_gram( xm, xm, self.sigma )
+                self.avg_jac = K_Jacobians.mean(dim=-3) # [M x D]
+            else:
+                K = self.gram_matrix( xm, xm, self.sigma )
+                self.avg_jac = torch.einsum('ij,ijk->ik', K, xm[:, None, :]-xm[None, :, :] ) / (self.sigma**2) / self.M # [M x D]
             #
             # ~~~ Optionally, K += eta*I for numerical stability
             if self.eta is not None:
-                self.K += self.eta * torch.eye( xm.size(-2), dtype=xm.dtype, device=xm.device )
+                K += self.eta * torch.eye( xm.size(-2), dtype=xm.dtype, device=xm.device )
             #
             # ~~~ Do the actual eigen-decomposition
             if self.num_eigs is None:
                 try:
-                    eigen_vals, eigen_vecs = torch.linalg.eigh(self.K) if self.h else torch.linalg.eig(self.K)
+                    eigen_vals, eigen_vecs = torch.linalg.eigh(K) if self.h else torch.linalg.eig(K)
                 except RuntimeError:
                     my_warn("There is a bug in the source torch.linalg.eigh code. Specify h=False to use torch.linalg.eig instead")
                     raise
                 eigen_vals, eigen_vecs = eigen_vals.flip([0]), eigen_vecs.flip([1])
             else:
-                U, s, V  = torch.svd_lowrank( self.K, q=min(self.K.shape[0],self.num_eigs) )
+                U, s, V  = torch.svd_lowrank( K, q=min(K.shape[0],self.num_eigs) )
                 eigen_vals = s
                 eigen_vecs = (U+V)/2    # ~~~ by my estimation, because Kxx is symmetric, we actually expect U==V; we are only averaging out the arithmetic errors
             # """
