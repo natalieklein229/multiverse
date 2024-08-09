@@ -27,7 +27,7 @@ from bnns.utils import plot_bnn_mean_and_std, plot_bnn_empirical_quantiles, set_
 from quality_of_life.my_visualization_utils import GifMaker
 from quality_of_life.my_torch_utils         import nonredundant_copy_of_module_list, convert_Dataset_to_Tensors
 from quality_of_life.my_numpy_utils         import moving_average
-from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict, my_warn
+from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict, print_dict, my_warn
 
 
 
@@ -168,7 +168,7 @@ if data_is_univariate:
         #
         # ~~~ Draw from the posterior predictive distribuion
         with torch.no_grad():
-            predictions = ensemble(grid)
+            predictions = ensemble(grid).squeeze()
             if predictions_include_conditional_std:
                 predictions += ensemble.conditional_std * torch.randn_like(predictions)
         return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
@@ -205,6 +205,8 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
             gif.capture()
             # print("captured")
 
+pbar.close()
+
 #
 # ~~~ Plot the state of the posterior predictive distribution at the end of training
 if data_is_univariate:
@@ -215,8 +217,11 @@ if data_is_univariate:
         for j in range(final_frame_repetitions):
             gif.capture( clear_frame_upon_capture=(j+1==final_frame_repetitions) )
         gif.develop( destination=description_of_the_experiment, fps=24 )
+        plt.close()
     else:
         plt.show()
+
+
 
 ### ~~~
 ## ~~~ Debugging diagnostics
@@ -231,17 +236,34 @@ if data_is_univariate:
 
 
 ### ~~~
-## ~~~ Evaluate the trained model
+## ~~~ Metrics (evaluate the trained model)
 ### ~~~
 
 #
 # ~~~ Compute the posterior predictive distribution on the testing dataset
-x_test, y_test = convert_Dataset_to_Tensors(D_test)
-predictions = ensemble(x_test).flatten()
-if extra_std:
-    predictions += ensemble.conditional_std*torch.randn_like(predictions)
+x_train, y_train  =  convert_Dataset_to_Tensors(D_train)
+x_test, y_test    =    convert_Dataset_to_Tensors(D_test)
 
-hyperparameters["metric"] = "here, we will record metrics"
+with torch.no_grad():
+    predictions = ensemble(x_test)
+    if extra_std:
+        predictions += ensemble.conditional_std*torch.randn_like(predictions)
+
+#
+# ~~~ Compute the desired metrics
+hyperparameters["METRIC_mse_of_median"]  =  mse_of_median( predictions, y_test )
+hyperparameters["METRIC_mse_of_mean"]    =    mse_of_mean( predictions, y_test )
+hyperparameters["METRIC_mae_of_median"]  =  mae_of_median( predictions, y_test )
+hyperparameters["METRIC_mae_of_mean"]    =    mae_of_mean( predictions, y_test )
+hyperparameters["METRIC_max_norm_of_median"]  =  max_norm_of_median( predictions, y_test )
+hyperparameters["METRIC_max_norm_of_mean"]    =    max_norm_of_mean( predictions, y_test )
+for estimator in ("mean","median"):
+    hyperparameters[f"METRIC_uncertainty_vs_proximity_slope_{estimator}"], hyperparameters[f"METRIC_uncertainty_vs_proximity_cor_{estimator}"]  =  uncertainty_vs_proximity( predictions, y_test, (estimator=="median"), x_test, x_train, show=show_diagnostics )
+    hyperparameters[f"METRIC_uncertainty_vs_accuracy_slope_{estimator}"], hyperparameters[f"METRIC_uncertainty_vs_accuracy_cor_{estimator}"]    =    uncertainty_vs_accuracy( predictions, y_test, quantile_uncertainty=visualize_bnn_using_quantiles, quantile_accuracy=(estimator=="median"), show=show_diagnostics )
+
+#
+# ~~~ Print the results
+print_dict(hyperparameters)
 
 
 

@@ -203,6 +203,7 @@ pbar.close()
 if data_is_univariate:
     if make_gif:
         gif.develop( destination="NN", fps=24 )
+        plt.close()
     else:
         fig,ax = plt.subplots(figsize=(12,6))
         fig, ax = plot_nn( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, NN )
@@ -214,7 +215,8 @@ if data.__name__ == "bnns.data.bivar_trivial":
     from bnns.data.univar_missing_middle import x_test, y_test
     fig,ax = plt.subplots(figsize=(12,6))
     plt.plot( x_test.cpu(), y_test.cpu(), "--", color="green" )
-    y_pred = NN(data.D_test.X).detach().mean(dim=-1)
+    with torch.no_grad():
+        y_pred = NN(data.D_test.X.to( device=DEVICE, dtype=dtype )).mean(dim=-1)
     plt.plot( x_test.cpu(), y_pred.cpu(), "-", color="blue" )
     fig.suptitle("If these lines roughly match, then the algorithm is surely working correctly")
     ax.grid()
@@ -231,8 +233,10 @@ if data.__name__ == "bnns.data.bivar_trivial":
 # ~~~ Compute the posterior predictive distribution on the testing dataset
 x_train, y_train  =  convert_Dataset_to_Tensors(D_train)
 x_test, y_test    =    convert_Dataset_to_Tensors(D_test)
-predictions = torch.column_stack([ NN(x_test).flatten() for _ in range(n_posterior_samples_evaluation) ]) if dropout else NN(x_test).flatten()
+predictions = torch.stack([ NN(x_test) for _ in range(n_posterior_samples_evaluation) ]).permute(1,2,0) if dropout else NN(x_test)
 
+#
+# ~~~ Compute the desired metrics
 if dropout:
     hyperparameters["METRIC_mse_of_median"]  =  mse_of_median( predictions, y_test )
     hyperparameters["METRIC_mse_of_mean"]    =    mse_of_mean( predictions, y_test )

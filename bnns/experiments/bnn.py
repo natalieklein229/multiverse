@@ -19,13 +19,13 @@ from bnns.SequentialGaussianBNN import SequentialGaussianBNN
 #
 # ~~~ Package-specific utils
 from bnns.utils import plot_bnn_mean_and_std, plot_bnn_empirical_quantiles, set_Dataset_attributes, generate_json_filename
-from quality_of_life.my_torch_utils import convert_Dataset_to_Tensors
+from bnns.metrics import *
 
 #
 # ~~~ My Personal Helper Functions (https://github.com/ThomasLastName/quality_of_life)
 from quality_of_life.my_visualization_utils import GifMaker
 from quality_of_life.my_numpy_utils         import moving_average
-from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict, my_warn
+from quality_of_life.my_base_utils          import support_for_progress_bars, dict_to_json, json_to_dict, print_dict, my_warn
 from quality_of_life.my_torch_utils         import convert_Dataset_to_Tensors
 
 
@@ -267,7 +267,9 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
             #     "prior": f"{log_prior_density.item():<4.2f}",
             #     "like" : f"{log_likelihood_density.item():<4.2f}"
             # }
-            to_print = { "neg. log. lik." : f"{-log_likelihood_density.item():<4.2f}" }
+            m = X.shape[0]
+            accuracy = ( log_likelihood_density.item() + (m/2)*torch.log(2*torch.pi*BNN.conditional_std) ) * BNN.conditional_std/m # ~~~ basically, mse if weights are Gaussian, mae if weights are Laplace, etc. maybe off by a factor of 2 or something
+            to_print = { "conventional loss" : f"{accuracy.item():<4.2f}" }
             pbar.set_postfix(to_print)
             _ = pbar.update()
         #
@@ -323,19 +325,33 @@ if data.__name__ == "bnns.data.bivar_trivial":
 
 
 ### ~~~
-## ~~~ Evaluate the trained model
+## ~~~ Metrics (evaluate the trained model)
 ### ~~~
 
 #
 # ~~~ Compute the posterior predictive distribution on the testing dataset
-x_test, y_test = convert_Dataset_to_Tensors(D_test)
-predictions = torch.column_stack([ BNN(x_test,resample_weights=True).flatten() for _ in range(n_posterior_samples_evaluation) ])
-if extra_std:
-    predictions += BNN.conditional_std*torch.randn_like(predictions)
+x_train, y_train  =  convert_Dataset_to_Tensors(D_train)
+x_test, y_test    =    convert_Dataset_to_Tensors(D_test)
+with torch.no_grad():
+    predictions = torch.stack([ BNN(x_test,resample_weights=True)for _ in range(n_posterior_samples_evaluation) ]).permute(1,2,0)
+    if extra_std:
+        predictions += BNN.conditional_std*torch.randn_like(predictions)
 
 #
-# ~~~ Evaluate the quality of the predictive distribution
-hyperparameters["metric"] = "here, we will record metrics"
+# ~~~ Compute the desired metrics
+hyperparameters["METRIC_mse_of_median"]  =  mse_of_median( predictions, y_test )
+hyperparameters["METRIC_mse_of_mean"]    =    mse_of_mean( predictions, y_test )
+hyperparameters["METRIC_mae_of_median"]  =  mae_of_median( predictions, y_test )
+hyperparameters["METRIC_mae_of_mean"]    =    mae_of_mean( predictions, y_test )
+hyperparameters["METRIC_max_norm_of_median"]  =  max_norm_of_median( predictions, y_test )
+hyperparameters["METRIC_max_norm_of_mean"]    =    max_norm_of_mean( predictions, y_test )
+for estimator in ("mean","median"):
+    hyperparameters[f"METRIC_uncertainty_vs_proximity_slope_{estimator}"], hyperparameters[f"METRIC_uncertainty_vs_proximity_cor_{estimator}"]  =  uncertainty_vs_proximity( predictions, y_test, (estimator=="median"), x_test, x_train, show=show_diagnostics )
+    hyperparameters[f"METRIC_uncertainty_vs_accuracy_slope_{estimator}"], hyperparameters[f"METRIC_uncertainty_vs_accuracy_cor_{estimator}"]    =    uncertainty_vs_accuracy( predictions, y_test, quantile_uncertainty=visualize_bnn_using_quantiles, quantile_accuracy=(estimator=="median"), show=show_diagnostics )
+
+#
+# ~~~ Print the results
+print_dict(hyperparameters)
 
 
 

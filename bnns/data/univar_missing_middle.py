@@ -32,6 +32,7 @@ y_val = f(x_val) + noise*torch.randn( size=(n_val,) )
 # ~~~ Reshape y data in order to be consistent with the shape returned by a model with final layer nn.Linear(m,1)
 y_train = y_train.reshape(-1,1)    
 y_test  =  y_test.reshape(-1,1)
+y_val   =   y_val.reshape(-1,1)
 
 #
 # ~~~ Rename the function according to how it will be imported

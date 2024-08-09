@@ -95,7 +95,7 @@ def cor(u,w):
 
 #
 # ~~~ Compute an empirical 95% confidence interval
-iqr = lambda tensor, dim=-1: tensor.quantile( q=torch.Tensor([0.25,0.75]).to(tensor.device), dim=dim ).diff(dim=0).flatten()
+iqr = lambda tensor, dim=-1: tensor.quantile( q=torch.Tensor([0.25,0.75]).to(tensor.device), dim=dim ).diff(dim=0).squeeze(dim=0)
 
 #
 # ~~~ Do polynomial regression

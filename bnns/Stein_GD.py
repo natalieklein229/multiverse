@@ -81,19 +81,20 @@ class SteinEnsemble:
     #
     # ~~~ forward for the full ensemble
     def __call__(self,x):
-        return torch.column_stack([ model(x) for model in self.models ])
+        return torch.stack([ model(x) for model in self.models ]).permute(1,2,0)
 
 
 class SequentialSteinEnsemble(SteinEnsemble):
-    def __init__( self, architecture, n_copies, device, *args, **kwargs ):
+    def __init__( self, architecture, n_copies, device="cpu", *args, **kwargs ):
+        self.device = device
         super().__init__(
-            list_of_NNs = [
-                nonredundant_copy_of_module_list( architecture, sequential=True ).to(device)
-                for _ in range(n_copies)
-            ],
-            *args,
-            **kwargs
-        )
+                list_of_NNs = [
+                    nonredundant_copy_of_module_list( architecture, sequential=True ).to(device)
+                    for _ in range(n_copies)
+                ],
+                *args,
+                **kwargs
+            )
 
 # class SteinEnsembleDebug:
 #     #

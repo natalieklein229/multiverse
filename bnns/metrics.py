@@ -9,25 +9,30 @@ from quality_of_life.my_visualization_utils import points_with_curves
 # ~~~ Measure MSE of a deterministic model with error=model(x_test)-y_test
 def mse( model, x_test, y_test ):
     with torch.no_grad():
-        return (( model(x_test).flatten() - y_test.flatten() )**2).mean().item()
+        pred = model(x_test)
+        assert pred.shape == y_test.shape
+        return (( pred - y_test )**2).mean().item()
 
 #
 # ~~~ Measure MAE of a deterministic model with error=model(x_test)-y_test
 def mae( model, x_test, y_test ):
     with torch.no_grad():
-        return ( model(x_test).flatten() - y_test.flatten() ).abs().mean().item()
+        pred = model(x_test)
+        assert pred.shape == y_test.shape
+        return ( pred - y_test ).abs().mean().item()
 
 #
 # ~~~ Measure max norm of a deterministic model with error=model(x_test)-y_test
 def max_norm( model, x_test, y_test ):
     with torch.no_grad():
-        return ( model(x_test).flatten() - y_test.flatten() ).abs().max().item()
+        pred = model(x_test)
+        assert pred.shape == y_test.shape
+        return ( pred - y_test ).abs().max().item()
 
 #
 # ~~~ Measure MSE of the predictive median
 def mse_of_median( predictions, y_test ):
     with torch.no_grad():
-        y_test = y_test.flatten()
         pred = predictions.median(dim=-1).values
         assert pred.shape == y_test.shape
         return (( pred - y_test )**2).mean().item()
@@ -36,7 +41,6 @@ def mse_of_median( predictions, y_test ):
 # ~~~ Measure MAE of the predictive median 
 def mae_of_median( predictions, y_test ):
     with torch.no_grad():
-        y_test = y_test.flatten()
         pred = predictions.median(dim=-1).values
         assert pred.shape == y_test.shape
         return ( pred - y_test ).abs().mean().item()
@@ -45,7 +49,6 @@ def mae_of_median( predictions, y_test ):
 # ~~~ Measure max norm of the predictive median 
 def max_norm_of_median( predictions, y_test ):
     with torch.no_grad():
-        y_test = y_test.flatten()
         pred = predictions.median(dim=-1).values
         assert pred.shape == y_test.shape
         return ( pred - y_test ).abs().max().item()
@@ -54,7 +57,6 @@ def max_norm_of_median( predictions, y_test ):
 # ~~~ Measure MSE of the predictive mean
 def mse_of_mean( predictions, y_test ):
     with torch.no_grad():
-        y_test = y_test.flatten()
         pred = predictions.mean(dim=-1)
         assert pred.shape == y_test.shape
         return (( pred - y_test )**2).mean().item()
@@ -63,7 +65,6 @@ def mse_of_mean( predictions, y_test ):
 # ~~~ Measure MAE of the predictive mean
 def mae_of_mean( predictions, y_test ):
     with torch.no_grad():
-        y_test = y_test.flatten()
         pred = predictions.mean(dim=-1)
         assert pred.shape == y_test.shape
         return ( pred - y_test ).abs().mean().item()
@@ -72,7 +73,6 @@ def mae_of_mean( predictions, y_test ):
 # ~~~ Measure max norm of the predictive mean
 def max_norm_of_mean( predictions, y_test ):
     with torch.no_grad():
-        y_test = y_test.flatten()
         pred = predictions.mean(dim=-1)
         assert pred.shape == y_test.shape
         return ( pred - y_test ).abs().max().item()
@@ -99,12 +99,12 @@ def max_norm_of_mean( predictions, y_test ):
 # ~~~ Measure strength of the relation "predictive uncertainty (std. dev. / iqr)" ~ "accuracy (MSE of the predictive mean / predictive median)"
 def uncertainty_vs_accuracy( predictions, y_test, quantile_uncertainty, quantile_accuracy, show=True ):
     with torch.no_grad():
-        y_test = y_test.flatten() 
-        assert y_test.shape[0] == predictions.shape[0]
         uncertainty = iqr(predictions,dim=-1) if quantile_uncertainty else predictions.std(dim=-1)
-        accuracy = (predictions.median(dim=-1).values-y_test)**2 if quantile_accuracy else (predictions.mean(dim=-1)-y_test)**2
-        uncertainty  =  uncertainty.cpu().numpy()
-        accuracy     =     accuracy.cpu().numpy()
+        point_estimate = predictions.median(dim=-1).values  if quantile_accuracy else predictions.mean(dim=-1)
+        accuracy = (point_estimate-y_test)**2
+        assert y_test.shape == point_estimate.shape == uncertainty.shape == accuracy.shape
+        uncertainty  =  uncertainty.flatten().cpu().numpy()
+        accuracy     =     accuracy.flatten().cpu().numpy()
         #
         # ~~~ Use polynomial regression to measure the strength of the relation uncertainty~accuracy
         fits = [ univar_poly_fit( y=uncertainty, x=accuracy, degree=k ) for k in (1,2,3) ]
@@ -133,13 +133,13 @@ def uncertainty_vs_accuracy( predictions, y_test, quantile_uncertainty, quantile
 # ~~~ Measure strength of the relation "predictive uncertainty (std. dev.)" ~ "distance from training points"
 def uncertainty_vs_proximity( predictions, y_test, quantile_uncertainty, x_test, x_train, show=True ):
     with torch.no_grad():
-        y_test = y_test.flatten() 
-        assert y_test.shape[0] == predictions.shape[0]
         uncertainty = iqr(predictions,dim=-1) if quantile_uncertainty else predictions.std(dim=-1)
         proximity = torch.cdist( x_test.reshape(x_test.shape[0],-1), x_train.reshape(x_train.shape[0],-1) ).min(dim=-1).values
-        assert proximity.shape == uncertainty.shape
-        uncertainty  =  uncertainty.cpu().numpy()
-        proximity    =    proximity.cpu().numpy()
+        n_test, n_out_features = y_test.shape
+        proximity = torch.column_stack(n_out_features*[proximity]) # ~~~ proximity to training data is the same for each of the output features
+        assert y_test.shape == proximity.shape == uncertainty.shape
+        uncertainty  =  uncertainty.flatten().cpu().numpy()
+        proximity    =    proximity.flatten().cpu().numpy()
         #
         # ~~~ Use polynomial regression to measure the strength of the relation uncertainty~proximity
         fits = [ univar_poly_fit( y=uncertainty, x=proximity, degree=k ) for k in (1,2,3) ]
