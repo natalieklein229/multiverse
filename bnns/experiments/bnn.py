@@ -268,7 +268,7 @@ with support_for_progress_bars():   # ~~~ this just supports green progress bars
             #     "like" : f"{log_likelihood_density.item():<4.2f}"
             # }
             m = X.shape[0]
-            accuracy = ( log_likelihood_density.item() + (m/2)*torch.log(2*torch.pi*BNN.conditional_std) ) * BNN.conditional_std/m # ~~~ basically, mse if weights are Gaussian, mae if weights are Laplace, etc. maybe off by a factor of 2 or something
+            accuracy = -( log_likelihood_density.item() + (m/2)*torch.log(2*torch.pi*BNN.conditional_std) )/2 * BNN.conditional_std/m # ~~~ basically, mse if weights are Gaussian, mae if weights are Laplace, etc. maybe off by a factor of 2 or something
             to_print = { "conventional loss" : f"{accuracy.item():<4.2f}" }
             pbar.set_postfix(to_print)
             _ = pbar.update()
