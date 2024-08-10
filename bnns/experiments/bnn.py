@@ -333,7 +333,7 @@ if data.__name__ == "bnns.data.bivar_trivial":
 x_train, y_train  =  convert_Dataset_to_Tensors(D_train)
 x_test, y_test    =    convert_Dataset_to_Tensors(D_test)
 with torch.no_grad():
-    predictions = torch.stack([ BNN(x_test,resample_weights=True)for _ in range(n_posterior_samples_evaluation) ]).permute(1,2,0)
+    predictions = torch.stack([ BNN(x_test,resample_weights=True) for _ in range(n_posterior_samples_evaluation) ])
     if extra_std:
         predictions += BNN.conditional_std*torch.randn_like(predictions)
 

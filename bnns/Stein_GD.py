@@ -81,7 +81,7 @@ class SteinEnsemble:
     #
     # ~~~ forward for the full ensemble
     def __call__(self,x):
-        return torch.stack([ model(x) for model in self.models ]).permute(1,2,0)
+        return torch.stack([ model(x) for model in self.models ])
 
 
 class SequentialSteinEnsemble(SteinEnsemble):

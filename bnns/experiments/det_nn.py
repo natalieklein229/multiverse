@@ -233,7 +233,7 @@ if data.__name__ == "bnns.data.bivar_trivial":
 # ~~~ Compute the posterior predictive distribution on the testing dataset
 x_train, y_train  =  convert_Dataset_to_Tensors(D_train)
 x_test, y_test    =    convert_Dataset_to_Tensors(D_test)
-predictions = torch.stack([ NN(x_test) for _ in range(n_posterior_samples_evaluation) ]).permute(1,2,0) if dropout else NN(x_test)
+predictions = torch.stack([ NN(x_test) for _ in range(n_posterior_samples_evaluation) ]) if dropout else NN(x_test)
 
 #
 # ~~~ Compute the desired metrics

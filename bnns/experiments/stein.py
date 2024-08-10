@@ -168,7 +168,7 @@ if data_is_univariate:
         #
         # ~~~ Draw from the posterior predictive distribuion
         with torch.no_grad():
-            predictions = ensemble(grid).squeeze()
+            predictions = ensemble(grid).squeeze().T
             if predictions_include_conditional_std:
                 predictions += ensemble.conditional_std * torch.randn_like(predictions)
         return plot_predictions( fig, ax, grid, green_curve, x_train_cpu, y_train_cpu, predictions, predictions_include_conditional_std, how_many_individual_predictions, title )
