@@ -232,8 +232,8 @@ class VariationalBNN(_SupervisedBNN):
         result.update(self.likelihood_guide(*_as_tuple(x), obs) or {})
         return result
 
-    def fit(self, data_loader, optim, num_epochs, callback=None, num_particles=1, closed_form_kl=True, device=None,
-            hist=False, test_loader=None, test_eval_interval=10):
+    def fit(self, data_loader, optim, num_epochs, callback=None, num_particles=1, closed_form_kl=True, 
+            hist=False, test_loader=None, test_eval_interval=1):
         """Optimizes the variational parameters on data from data_loader using optim for num_epochs.
 
         :param Iterable data_loader: iterable over batches of data, e.g. a torch.utils.data.DataLoader. Assumes that
@@ -248,12 +248,12 @@ class VariationalBNN(_SupervisedBNN):
         :param int num_particles: number of MC samples for estimating the ELBO.
         :param bool closed_form_kl: whether to use TraceMeanField_ELBO or Trace_ELBO, i.e. calculate KL divergence
             between approximate posterior and prior in closed form or via a Monte Carlo estimate.
-        :param torch.device device: optional device to send the data to.
+
         """
         if hist:
             nll_hist = torch.zeros(num_epochs)
             if test_loader is not None:
-                nll_hist_test = torch.zeros(num_epochs//test_eval_interval)
+                nll_hist_test = torch.zeros(num_epochs)
 
         loss = TraceMeanField_ELBO(num_particles) if closed_form_kl else Trace_ELBO(num_particles)
         svi = SVI(self.model, self.guide, optim, loss=loss)
@@ -262,13 +262,13 @@ class VariationalBNN(_SupervisedBNN):
             elbo = 0.
             num_batch = 1
             for num_batch, (input_data, observation_data) in enumerate(iter(data_loader), 1):
-                svi_step = svi.step(tuple(_to(input_data, device)), tuple(_to(observation_data, device))[0])
+                svi_step = svi.step(tuple(_to(input_data, self.device)), tuple(_to(observation_data, self.device))[0])
                 elbo += svi_step
                 if hist:
                     guide_tr = pyro.poutine.trace(self.net_guide).get_trace(input_data.to(self.device))
                     batch_nll = -self.likelihood.log_likelihood(pyro.poutine.replay(self.net, guide_tr)(input_data.to(self.device)), 
                                                                 observation_data.to(self.device), reduction="mean")
-                    nll_hist[i] += batch_nll
+                    nll_hist[i] += batch_nll.item()
             if hist:
                 nll_hist[i] = nll_hist[i] / num_batch
 
@@ -277,7 +277,7 @@ class VariationalBNN(_SupervisedBNN):
                     guide_tr = pyro.poutine.trace(self.net_guide).get_trace(input_data.to(self.device))
                     test_batch_nll = -self.likelihood.log_likelihood(pyro.poutine.replay(self.net, guide_tr)(input_data.to(self.device)), 
                                                                      observation_data.to(self.device), reduction="mean")
-                    nll_hist_test[i] += test_batch_nll
+                    nll_hist_test[i] += test_batch_nll.item()
                 nll_hist_test[i] = nll_hist_test[i] / num_batch
 
             # the callback can stop training by returning True
@@ -285,7 +285,7 @@ class VariationalBNN(_SupervisedBNN):
                 break
 
         if hist:
-            return nll_hist
+            return nll_hist, nll_hist_test # TODO return test nll as well
         return svi
 
     def predict(self, *input_data, num_predictions=1, aggregate=False, guide_traces=None):
@@ -354,7 +354,8 @@ class LaplaceBNN(_SupervisedBNN):
             if self.net.output_size == 1:
                 JtC = J.T.double() @ C
             else:
-                JtC = J.transpose(1,2).double().matmul(C).transpose(0,1).reshape(num_par,-1)
+                #JtC = J.transpose(1,2).double().matmul(C).transpose(0,1).reshape(num_par,-1)
+                JtC = J.transpose(0,2).double().matmul(C).reshape(num_par,-1) # fixing error -- not sure
             GGN = P.double() + JtC.matmul(JtC.T)
             return GGN
         
@@ -363,7 +364,8 @@ class LaplaceBNN(_SupervisedBNN):
             if self.net.output_size == 1:
                 JtC = J.T.double() @ C
             else:
-                JtC = J.transpose(1,2).double().matmul(C).transpose(0,1).reshape(num_par,-1)
+                #JtC = J.transpose(1,2).double().matmul(C).transpose(0,1).reshape(num_par,-1)
+                JtC = J.transpose(0,2).double().matmul(C).reshape(num_par,-1) # fixing error -- not sure
             GGN = P.double().squeeze() + (JtC**2).sum(axis=1).squeeze()
 
             return GGN
@@ -386,7 +388,7 @@ class LaplaceBNN(_SupervisedBNN):
                     guide_tr = pyro.poutine.trace(self.net_guide).get_trace(input_data.to(self.device))
                     batch_nll = -self.likelihood.log_likelihood(pyro.poutine.replay(self.net, guide_tr)(input_data.to(self.device)), 
                                                                 observation_data.to(self.device), reduction="mean")
-                    nll_hist[i] += batch_nll
+                    nll_hist[i] += batch_nll.item()
             if hist:
                 nll_hist[i] = nll_hist[i] / num_batch
 
@@ -395,14 +397,15 @@ class LaplaceBNN(_SupervisedBNN):
                     guide_tr = pyro.poutine.trace(self.net_guide).get_trace(input_data.to(self.device))
                     test_batch_nll = -self.likelihood.log_likelihood(pyro.poutine.replay(self.net, guide_tr)(input_data.to(self.device)), 
                                                                      observation_data.to(self.device), reduction="mean")
-                    nll_hist_test[i] += test_batch_nll
+                    nll_hist_test[i] += test_batch_nll.item()
                 nll_hist_test[i] = nll_hist_test[i] / num_batch
 
             # the callback can stop training by returning True
             if callback is not None and callback(self, i, elbo / num_batch):
                 break
 
-        input_data = data_loader.dataset.tensors[0].to(self.device)
+        # TODO is it okay to use part of the data? or should we use the data loader somehow
+        input_data = data_loader.dataset.tensors[0][:2].to(self.device) # only using a little bit of the tensor, is this OK? memory issue
         
         guide_tr = pyro.poutine.trace(self.net_guide).get_trace(input_data)
         net_tr = pyro.poutine.trace(pyro.poutine.replay(self.net, guide_tr)).get_trace(input_data)
@@ -474,7 +477,7 @@ class LaplaceBNN(_SupervisedBNN):
         :param int num_predictions: number of samples from the predictive distribution.
         :param bool aggregate: whether to aggregate the predictions depending on the likelihood, e.g. averaging them.
         """
-        input_data = input_data.to(self.device)
+        #input_data = input_data.to(self.device)
         J_map, f_map = self.jacobian(input_data)
         theta_samples = self.gaussian_approx.sample((num_predictions,))
         

@@ -1,0 +1,11 @@
+name: multiverse
+dependencies:
+  - python
+  - numpy
+  - scipy
+  - tqdm
+  - matplotlib
+  - ipykernel
+  - pandas
+  - scikit-learn
+  - pip

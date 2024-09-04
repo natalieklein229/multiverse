@@ -1,33 +1,22 @@
 """
-Fit Laplace after NN fit. 
+Fit Laplace after NN fit. (using Immer's package)
 
 """
 # %%
-import functools
+
+from laplace import Laplace, marglik_training
+from laplace.curvature.backpack import BackPackGGN, BackPackEF
+from laplace.utils import LargestMagnitudeSubnetMask
 import numpy as np
-import pandas as pd
 import copy
 import matplotlib.pyplot as plt
-from sklearn.cross_decomposition import PLSRegression
 import torch
 import torch.optim as optim
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader, TensorDataset
-import os
+from torch.utils.data import DataLoader, TensorDataset
 import lightning as L
-from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from functools import partial
-import pyro.distributions as dist
-import pyro
-pyro.enable_validation(True)
+from tqdm import tqdm
 
-import tyxe
-
-from inference.bnn import *
-import inference.guides as guides
-import inference.likelihoods as likelihoods
-import inference.priors as priors
-from inference.util import *
 from neural_nets.CNN import CNN
 
 torch.set_float32_matmul_precision('medium')
@@ -43,10 +32,38 @@ oxides = ['SiO2', 'TiO2', 'Al2O3', 'FeOT', 'MnO', 'MgO', 'CaO', 'Na2O', 'K2O']
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # %% Params
-n_epo = 100
+# s_perc=0.1, defaults for prior/noise -- okay, kind of overcovers
+# s_perc=0.2, defaults for prior/noise -- very similar to 0.1
+# s_perc=0.5, defaults for prior/noise -- bad, nans
+# Sticking with s_perc 0.2 and sigma_noise=1.0, try:
+# prior_precision 0.1: all nans
+# prior_precision 10.0: pretty much same as 1.0
+# Keep s_perc 0.2, prior_precision 1.0, try:
+# sigma_noise = 0.1: nans
+# Keep s_perc 0.2, prior_precision 1.0, try:
+# sigma_noise = 0.1: still bad
+# sigma_noise = 0.5: still bad
+# sigma_noise = 5.0: intervals way too big
+# sigma_noise = 0.8: better than 1.0
+# sigma_noise = 0.7: better than 0.8
+# sigma_noise = 0.6: lots of nans, undercovers
+# if turn up prior precision to 100.0,
+# sigma_noise = 0.6: looks okish.
+# sigma_noise = 0.5: good
+# sigma_noise = 0.1: too small
+# sigma_noise = 0.25: ok, perhaps a bit small
+# sigma_noise = 0.3: close to ensemble. good overall.
+
+
+#n_epo = 30
+s_perc = 0.2
 # priors
-wp = 1.0
-nprec = .1**-2
+# s_perc 0.5 original results; n_particles 1
+#wp = 100.0 # used in VI; not good for laplace!!!!! 
+#wp = 0.01
+#nprec = .1**-2
+prior_precision = 100.0 # default 1.0
+sigma_noise = 0.3 # default 1.0
 
 # %% functions
 class CCamCNN(L.LightningModule):
@@ -82,6 +99,7 @@ class CCamCNN(L.LightningModule):
 train_spec = np.load('data/train_spec.npy')
 val_spec = np.load('data/val_spec.npy')
 test_spec = np.load('data/test_spec.npy')
+mars_spec = np.load('data/mars_spec.npy')
 train_oxides = np.load('data/train_oxides.npy')
 val_oxides = np.load('data/val_oxides.npy')
 test_oxides = np.load('data/test_oxides.npy')
@@ -98,32 +116,80 @@ cnn = CNN(in_dim=train_spec.shape[1], out_dim=len(oxides), ch_sizes=[32,128,1],
           krnl_sizes=[11,5,1], stride=[3,3,3], lin_l_sizes = [20, 20],
           activation='relu', device=device)
 
-model = CCamCNN.load_from_checkpoint('lightning_logs/version_0/checkpoints/epoch=114-step=125235.ckpt', cnn=cnn)
+orig_model = CCamCNN.load_from_checkpoint('lightning_logs/version_1/checkpoints/epoch=74-step=105525.ckpt', cnn=cnn)
 
 # %% Linearized Laplace
-cnn_laplace_copy = copy.deepcopy(model.cnn)
-prior = priors.IIDPrior((dist.Normal(torch.tensor(0., device=device), torch.tensor(wp ** -0.5, device=device))))
-likelihood = likelihoods.HomoskedasticGaussian(len(train_spec), precision=nprec)
-laplace_bnn = LaplaceBNN(cnn_laplace_copy.to(device), prior, likelihood, approximation='subnet', S_perc=0.5).to(device)
-opt = pyro.optim.ClippedAdam({"lr": 3e-4, "clip_norm": 100.0, "lrd": 0.999})
-laplace_hist = laplace_bnn.fit(train_loader, opt, n_epo, num_particles=1, closed_form_kl=True, hist=True)
+n_param = 25900
+subnetwork_mask = LargestMagnitudeSubnetMask(orig_model.cnn, n_params_subnet=int(s_perc*n_param))
+subnetwork_indices = subnetwork_mask.select().type(torch.LongTensor)
 
-plt.figure()
-plt.plot(laplace_hist)
-plt.show()
+la = Laplace(orig_model.cnn, 'regression',
+             #subset_of_weights='all',
+             hessian_structure='full',
+             prior_precision=prior_precision,
+             sigma_noise=sigma_noise,
+             #hessian_structure='diag'
+             subset_of_weights='subnetwork',
+             #subset_of_weights='last_layer',
+             #hessian_structure='lowrank',
+             subnetwork_indices=subnetwork_indices
+             )
+la.fit(train_loader)
 
+# %% Try optimizing the hyperparams - does not work with subnet
+# log_prior, log_sigma = torch.ones(1, requires_grad=True), torch.ones(1, requires_grad=True)
+# hyper_optimizer = torch.optim.Adam([log_prior, log_sigma], lr=1e-1)
+# for i in tqdm(range(n_epo)):
+#     hyper_optimizer.zero_grad()
+#     neg_marglik = - la.log_marginal_likelihood(log_prior.exp(), log_sigma.exp())
+#     neg_marglik.backward()
+#     hyper_optimizer.step()
+
+# #la.optimize_prior_precision(method='marglik')
+#train_loader_tqdm = tqdm(train_loader)
+#setattr(train_loader_tqdm, 'dataset', train_loader.dataset)
+
+# la, model, margliks, losses = marglik_training(
+#    model=orig_model.cnn, train_loader=train_loader, likelihood='regression',
+#    hessian_structure='full', 
+#    #backend = BackPackEF,
+#    backend=BackPackGGN, 
+#    n_epochs=n_epo, 
+#    optimizer_kwargs={'lr': 0.1}, prior_structure='scalar'
+#)
+
+# plt.figure()
+# plt.plot(margliks)
+# plt.savefig("marglik.png")
+# plt.show()
+
+# plt.figure()
+# plt.plot(losses)
+# plt.savefig("loss.png")
+# plt.show()
+
+# %% TODO look a la.prior_precision or prior_precision_diag; posterior_covariance, posterior_scale; functional_variance
+# prior precision ~100 (very small variance)
+# posterior scale nan, look at posterior precision
 # %%
 cnn_pred = []
-laplace_pred = []
+laplace_mean = []
+laplace_sd = []
 for x, y in test_loader:
-# TODO use data loader later
-    cnn_pred.append(model.cnn(x.to(device)).detach().cpu().numpy())
-    laplace_pred_ = laplace_bnn.predict(x.to(device), num_predictions=100, aggregate=False)
-    laplace_pred.append(laplace_bnn.likelihood.sample(laplace_pred_).detach().cpu().numpy())
+    cnn_pred.append(orig_model.cnn(x.to(device)).detach().cpu().numpy())
+    f_mu, f_var = la(x.to(device))
+    f_mu = f_mu.squeeze().detach().cpu().numpy()
+    f_sigma = f_var.squeeze().sqrt().cpu().numpy()
+    f_sigma_diag = np.diagonal(f_sigma, axis1=1, axis2=2)
+    pred_std = np.sqrt(f_sigma_diag**2 + la.sigma_noise.item()**2)
+    #pred_std = np.sqrt(f_sigma_diag**2 + 1/nprec) # fixed nprec
+    laplace_mean.append(f_mu)
+    laplace_sd.append(pred_std)
 cnn_pred = np.concatenate(cnn_pred, 0)
-laplace_pred = np.concatenate(laplace_pred, 0)
-laplace_mean = np.mean(laplace_pred, 0)
-laplace_sd = np.std(laplace_pred, 0)
+
+# %%
+laplace_mean = np.concatenate(laplace_mean, 0) 
+laplace_sd = np.concatenate(laplace_sd, 0) 
 
 for i in range(len(oxides)):
     plt.figure()
@@ -132,7 +198,21 @@ for i in range(len(oxides)):
     plt.plot(test_oxides[:, i], cnn_pred[:, i], 'r.')
     plt.axline([0,0], slope=1)
     plt.title(oxides[i])
+    plt.savefig('test%d.png'%i)
     plt.show()
 
+# %% predict on Mars data
+mars_x = torch.from_numpy(mars_spec).float().to(device)
+f_mu, f_var = la(mars_x)
+f_sigma = f_var.squeeze().sqrt().cpu().numpy()
+f_sigma_diag = np.diagonal(f_sigma, axis1=1, axis2=2)
+pred_std = np.sqrt(f_sigma_diag**2 + la.sigma_noise.item()**2)
+mars_laplace_mean = f_mu.cpu().numpy()
+mars_laplace_sd = pred_std
+
 # %% save -- maybe some issues saving pyro models... 
-np.save('results/laplace_predictions.npy', laplace_pred)
+np.save('results/laplace_mean_predictions.npy', laplace_mean)
+np.save('results/laplace_sd_predictions.npy', laplace_sd)
+np.save('results/laplace_mars_mean_predictions.npy', mars_laplace_mean)
+np.save('results/laplace_mars_sd_predictions.npy', mars_laplace_sd)
+# %%

@@ -124,6 +124,11 @@ test_data = pd.concat(all_test_data, axis=0)
 # val_data.to_csv('data/val_data.csv', index=False)
 # test_data.to_csv('data/test_data.csv', index=False)
 
+# %% Load mars data 
+mars_wav = np.loadtxt('/home/neklein/chemcam_data/mars_data_wav.txt')
+mars = np.loadtxt('/home/neklein/chemcam_data/mars_data_test.txt')
+mars_wav, mars = mask_norm3(mars_wav, mars)
+
 # %%
 # a little other normalization
 wav_cols = [c for c in train_data.columns if 'wav' in c]
@@ -131,22 +136,28 @@ wav_cols = [c for c in train_data.columns if 'wav' in c]
 train_spec = train_data[wav_cols].values
 val_spec = val_data[wav_cols].values
 test_spec = test_data[wav_cols].values
+np.save('data/train_spec_nonorm.npy', train_spec)
 spec_max = np.max(train_spec)
 train_spec /= spec_max
 val_spec /= spec_max
 test_spec /= spec_max
+mars /= spec_max
 train_spec[train_spec<-0.499] = -0.499
 val_spec[val_spec<-0.499] = -0.499
 test_spec[test_spec<-0.499] = -0.499
+mars[mars<-0.499] = -0.499
 train_spec = np.log(train_spec + 0.5)
 val_spec = np.log(val_spec + 0.5)
 test_spec = np.log(test_spec + 0.5)
+mars = np.log(mars + 0.5)
 assert np.all(np.isfinite(train_spec))
 assert np.all(np.isfinite(val_spec))
 assert np.all(np.isfinite(test_spec))
+assert np.all(np.isfinite(mars))
 
 train_oxides = train_data[oxides].values / 100.0
 oxide_sd = np.std(train_oxides, 0, keepdims=True)
+np.save('data/oxide_sd.npy', oxide_sd)
 train_oxides /= oxide_sd
 val_oxides = (val_data[oxides].values / 100.0) / oxide_sd
 test_oxides = (test_data[oxides].values / 100.0) / oxide_sd
@@ -155,9 +166,11 @@ assert np.all(np.isfinite(val_oxides))
 assert np.all(np.isfinite(test_oxides))
 
 # %% Save data as numpy (for NN)
+np.save('data/train_wav.npy',mars_wav)
 np.save('data/train_spec.npy', train_spec)
 np.save('data/val_spec.npy', val_spec)
 np.save('data/test_spec.npy', test_spec)
+np.save('data/mars_spec.npy', mars)
 np.save('data/train_oxides.npy', train_oxides)
 np.save('data/val_oxides.npy', val_oxides)
 np.save('data/test_oxides.npy', test_oxides)
@@ -169,7 +182,8 @@ gcv = GridSearchCV(pls, params, verbose=2)
 gcv.fit(train_spec, train_oxides)
 
 # %%
-cv_mean = gcv.cv_results_['mean_test_score']
+# neg of score because it's R^2
+cv_mean = -gcv.cv_results_['mean_test_score']
 cv_se = gcv.cv_results_['std_test_score']/np.sqrt(5)
 args_ix = np.argmin(cv_mean > (cv_mean[np.argmin(cv_mean)]+cv_se[np.argmin(cv_mean)]))
 n_comp = params['n_components'][args_ix]
@@ -192,10 +206,13 @@ for i in range(len(oxides)):
     plt.show()
 
     pls_test_mse = np.mean(np.square(pls_y_hat[:, i]-test_oxides[:, i]))
-    print('%s PLS test rmse' % (oxides[i], pls_test_mse))
+    print('%s PLS test rmse %0.2f' % (oxides[i], pls_test_mse))
+
+pls_mars_y_hat = pls.predict(mars)
 
 # %% Save PLS and/or predictions
 np.save('results/PLS_predictions.npy', pls_y_hat)
+np.save('results/PLS_mars_predictions.npy', pls_mars_y_hat)
 
 # %% look at residual variance?
 resid = pls_y_hat - test_oxides

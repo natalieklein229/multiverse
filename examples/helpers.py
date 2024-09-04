@@ -102,7 +102,7 @@ def plot_1d_gaussian_preds(y_predictions,test_x, train_x=None, train_y=None, pre
         combined_std = torch.sqrt(combined_var)
         plt.fill_between(test_x, predictive_mean-2*(predictive_std), 
                     predictive_mean-2*combined_std, 
-                    color='limegreen', alpha=0.5, linewidth=0.0, label='Aleatoric')
+                    color='limegreen', alpha=0.5, linewidth=0.0, label='Aleatoric') 
         plt.fill_between(test_x, predictive_mean+2*(predictive_std), 
                         predictive_mean+2*combined_std, 
                         color='limegreen', alpha=0.5, linewidth=0.0)
@@ -116,8 +116,8 @@ def plot_1d_gaussian_preds(y_predictions,test_x, train_x=None, train_y=None, pre
                         alpha=0.8, linewidth=0.0, label='Epistemic + Aleatoric')
     plt.scatter(train_x,train_y, color='black', alpha=0.5, s=2)
 
-    plt.ylim(-1.3,1.5)
-    plt.xlim(-1.5,2.3)
+    #plt.ylim(-1.3,1.5)
+    #plt.xlim(-1.5,2.3)
     if method_name is not None:
         plt.title(method_name)
     plt.legend()
