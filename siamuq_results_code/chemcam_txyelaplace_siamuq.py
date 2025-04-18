@@ -1,6 +1,7 @@
 """
 Fit Laplace after NN fit. 
 
+DO NOT UES -- see chemcam_laplace_siamuq.py
 """
 # %%
 import functools

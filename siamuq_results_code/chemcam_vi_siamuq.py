@@ -1,5 +1,6 @@
 """
 Fit VI after NN fit. 
+DO NOT USE -- see chemcam_vi_torchbnn_siamuq.py
 
 """
 # %%
