@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.model_selection import GridSearchCV
 import os
+import pickle
 
 np.random.seed(42)
 
@@ -17,7 +18,7 @@ vio_range = [382.13, 473.184]
 uv_range = [246.635, 338.457]
 keep_shots = ['shot%d' % i for i in range(5, 50)]
 oxides = ['SiO2', 'TiO2', 'Al2O3', 'FeOT', 'MnO', 'MgO', 'CaO', 'Na2O', 'K2O']
-data_paths = ['/home/neklein/chemcam_data/calib_2015', '/home/neklein/chemcam_data/calib_2021']
+data_paths = ['/data/0/chemcam_data/calib_2015', '/data/0/chemcam_data/calib_2021']
 
 # %% Params
 prop_val = 0.1
@@ -68,7 +69,7 @@ def load_data(data_path, targets, comp, lookup):
     return data
 
 # %% data loading
-comp = pd.read_csv('/home/neklein/chemcam_data/ccam_calibration_compositions.csv',nrows=572)
+comp = pd.read_csv('/data/0/chemcam_data/ccam_calibration_compositions.csv',nrows=572)
 comp['Spectrum Name'] = comp['Spectrum Name'].astype(str)
 #comp['target'] = comp['Spectrum Name'].apply(lambda x: x.lower().replace('-','').replace('_','').replace(' ',''))
 comp['target'] = comp['Target'].astype(str).apply(lambda x: x.lower().replace('-','').replace('_','').replace(' ', ''))
@@ -125,8 +126,8 @@ test_data = pd.concat(all_test_data, axis=0)
 # test_data.to_csv('data/test_data.csv', index=False)
 
 # %% Load mars data 
-mars_wav = np.loadtxt('/home/neklein/chemcam_data/mars_data_wav.txt')
-mars = np.loadtxt('/home/neklein/chemcam_data/mars_data_test.txt')
+mars_wav = np.loadtxt('/data/0/chemcam_data/mars_data_wav.txt')
+mars = np.loadtxt('/data/0/chemcam_data/mars_data_test.txt')
 mars_wav, mars = mask_norm3(mars_wav, mars)
 
 # %%
@@ -136,7 +137,7 @@ wav_cols = [c for c in train_data.columns if 'wav' in c]
 train_spec = train_data[wav_cols].values
 val_spec = val_data[wav_cols].values
 test_spec = test_data[wav_cols].values
-np.save('data/train_spec_nonorm.npy', train_spec)
+np.save('/data/0/chemcam_bnn/train_spec_nonorm.npy', train_spec)
 spec_max = np.max(train_spec)
 train_spec /= spec_max
 val_spec /= spec_max
@@ -157,7 +158,7 @@ assert np.all(np.isfinite(mars))
 
 train_oxides = train_data[oxides].values / 100.0
 oxide_sd = np.std(train_oxides, 0, keepdims=True)
-np.save('data/oxide_sd.npy', oxide_sd)
+np.save('/data/0/chemcam_bnn/oxide_sd.npy', oxide_sd)
 train_oxides /= oxide_sd
 val_oxides = (val_data[oxides].values / 100.0) / oxide_sd
 test_oxides = (test_data[oxides].values / 100.0) / oxide_sd
@@ -166,17 +167,17 @@ assert np.all(np.isfinite(val_oxides))
 assert np.all(np.isfinite(test_oxides))
 
 # %% Save data as numpy (for NN)
-np.save('data/train_wav.npy',mars_wav)
-np.save('data/train_spec.npy', train_spec)
-np.save('data/val_spec.npy', val_spec)
-np.save('data/test_spec.npy', test_spec)
-np.save('data/mars_spec.npy', mars)
-np.save('data/train_oxides.npy', train_oxides)
-np.save('data/val_oxides.npy', val_oxides)
-np.save('data/test_oxides.npy', test_oxides)
+np.save('/data/0/chemcam_bnn/train_wav.npy',mars_wav)
+np.save('/data/0/chemcam_bnn/train_spec.npy', train_spec)
+np.save('/data/0/chemcam_bnn/val_spec.npy', val_spec)
+np.save('/data/0/chemcam_bnn/test_spec.npy', test_spec)
+np.save('/data/0/chemcam_bnn/mars_spec.npy', mars)
+np.save('/data/0/chemcam_bnn/train_oxides.npy', train_oxides)
+np.save('/data/0/chemcam_bnn/val_oxides.npy', val_oxides)
+np.save('/data/0/chemcam_bnn/test_oxides.npy', test_oxides)
 
 # %% PLS baseline
-params = {'n_components': np.arange(5, 25, 2)}
+params = {'n_components': np.arange(5, 20)}
 pls = PLSRegression()
 gcv = GridSearchCV(pls, params, verbose=2)
 gcv.fit(train_spec, train_oxides)
@@ -187,6 +188,8 @@ cv_mean = -gcv.cv_results_['mean_test_score']
 cv_se = gcv.cv_results_['std_test_score']/np.sqrt(5)
 args_ix = np.argmin(cv_mean > (cv_mean[np.argmin(cv_mean)]+cv_se[np.argmin(cv_mean)]))
 n_comp = params['n_components'][args_ix]
+with open('results/PLS_CV.pkl', 'wb') as f:
+    pickle.dump({'cv_mean':cv_mean, 'cv_se':cv_se, 'n_comp':n_comp}, f)
 
 plt.figure()
 plt.plot(params['n_components'], cv_mean)
