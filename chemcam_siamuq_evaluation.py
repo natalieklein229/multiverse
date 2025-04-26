@@ -1,5 +1,5 @@
 """
-Evaluate results from CNN, PLS, laplace, VI.
+Evaluate results from CNN, PLS, laplace, VI. OLD
 
 TODO:
 - figures and tables
@@ -7,6 +7,7 @@ TODO:
 """
 # %% 
 import os
+import pickle
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,43 +16,15 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import lightning as L
-from torchview import draw_graph
+#from torchview import draw_graph
 
 sns.set_theme(context='talk')
 
 from neural_nets.CNN import CNN
+from models import CCamCNN
 
 oxides = ['SiO2', 'TiO2', 'Al2O3', 'FeOT', 'MnO', 'MgO', 'CaO', 'Na2O', 'K2O']
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-class CCamCNN(L.LightningModule):
-    def __init__(self, cnn):
-        super().__init__()
-        self.cnn = cnn
-
-    def forward(self, x):
-        return self.cnn(x)
-
-    def training_step(self, batch):
-        x, y = batch
-        y_hat = self.cnn(x.unsqueeze(1))
-        loss = nn.functional.mse_loss(y_hat, y.to(device))
-        self.log('train_loss', loss, prog_bar=True, on_step=False, on_epoch=True)
-        return loss
-    
-    def validation_step(self, batch):
-        x, y = batch
-        y_hat = self.cnn(x.unsqueeze(1))
-        loss = nn.functional.mse_loss(y_hat, y)
-        self.log('val_loss', loss, prog_bar=True, on_step=False, on_epoch=True)
-    
-    def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=3e-4)
-        return optimizer
-
-    def predict_step(self, batch):
-        x, y = batch
-        return self(x)
 
 # %%
 def rmse(y, yhat):
@@ -70,18 +43,26 @@ def width(yhat):
     return np.mean(2*yhat_sd,0)
 
 # %%
-oxide_sd = np.load('data/oxide_sd.npy')
-test = np.load('data/test_oxides.npy')
-cnn_pred = np.load('results/cnn_predictions.npy')
-pls_pred = np.load('results/PLS_predictions.npy')
+oxide_sd = np.load('/data/0/chemcam_bnn/oxide_sd.npy')
+test = np.load('/data/0/chemcam_bnn/test_oxides.npy')
+cnn_pred = np.load('results/cnn1_predictions.npy')
+#pls_pred = np.load('results/PLS_predictions.npy')
+pls_pred = np.zeros_like(cnn_pred)
 laplace_mean = np.load('results/laplace_mean_predictions.npy')
 laplace_sd = np.load('results/laplace_sd_predictions.npy')
 vi_pred = np.load('results/vi_predictions.npy')
-ensemble_pred = []
-for i in np.arange(1, 31):
-    tmp = np.load('results/cnn%d_predictions.npy' % i)
-    ensemble_pred.append(tmp)
-ensemble_pred = np.array(ensemble_pred)
+vi_pred = np.transpose(vi_pred,[1,0,2])
+#vi_pred = np.zeros_like(cnn_pred)
+#ensemble_pred = []
+#for i in np.arange(1, 21):
+#    tmp = np.load('results/cnn%d_predictions.npy' % i)
+#    ensemble_pred.append(tmp)
+#ensemble_pred = np.array(ensemble_pred)
+with open('results/ensemble_compiled.pkl', 'rb') as f:
+    ens_res = pickle.load(f)
+ens_pred = ens_res['ens_pred_noisy'][ens_res['rmse']<3.0]
+ensemble_pred = ens_pred.reshape([-1,ens_pred.shape[2],ens_pred.shape[3]])
+ensemble_pred /= oxide_sd*100 # since alredy scaled before
 laplace_pred = []
 for i in range(100):
     laplace_pred.append(np.random.normal(loc=laplace_mean, scale=laplace_sd))

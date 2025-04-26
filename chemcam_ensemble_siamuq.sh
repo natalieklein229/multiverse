@@ -1,6 +1,6 @@
 source activate multiverse
 
-seed=($(seq 1 10))
+seed=($(seq 1 20))
 
 for s in ${seed[@]}; do
     python chemcam_fit_siamuq.py --seed $s

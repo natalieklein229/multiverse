@@ -16,70 +16,12 @@ import lightning as L
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
 from neural_nets.CNN import CNN
+from models import CCamCNN
 
 torch.set_float32_matmul_precision('medium')
 
 oxides = ['SiO2', 'TiO2', 'Al2O3', 'FeOT', 'MnO', 'MgO', 'CaO', 'Na2O', 'K2O']
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-# %% functions
-class CCamCNN(L.LightningModule):
-    def __init__(self, cnn, output_dim, weight_prior_precision=1.0, 
-                 logvar_prior_mean=0.0, logvar_prior_precision=1.0):
-        super().__init__()
-        self.cnn = cnn
-        self.log_var = nn.Parameter(torch.zeros(output_dim))
-        # Prior parameters
-        self.weight_prior_precision = weight_prior_precision
-        self.logvar_prior_mean = logvar_prior_mean
-        self.logvar_prior_precision = logvar_prior_precision
-
-    def forward(self, x):
-        return self.cnn(x)
-    
-    def negative_log_likelihood(self, x, y):
-        y_pred = self.forward(x)
-        precision = torch.exp(-self.log_var)
-        nll = 0.5 * torch.sum(precision * (y - y_pred)**2 + self.log_var)
-        return nll
-
-    def negative_log_prior(self):
-        log_prior = 0.0
-        for param in self.parameters():
-            if param is not self.log_var:
-                log_prior += 0.5 * torch.sum(param**2)
-        return self.weight_prior_precision * log_prior
-
-    def log_var_prior_loss(self):
-        # Gaussian prior on log_var
-        diff = self.log_var - self.logvar_prior_mean
-        return 0.5 * self.logvar_prior_precision * torch.sum(diff**2)
-
-    def training_step(self, batch):
-        x, y = batch
-        nll = self.negative_log_likelihood(x.unsqueeze(1), y.to(device))
-        log_prior = self.negative_log_prior()
-        logvar_prior = self.log_var_prior_loss()
-        loss = nll + log_prior + logvar_prior
-        self.log('train_loss', loss, prog_bar=True, on_step=False, on_epoch=True)
-        return loss
-    
-    def validation_step(self, batch):
-        x, y = batch
-        nll = self.negative_log_likelihood(x.unsqueeze(1), y.to(device))
-        log_prior = self.negative_log_prior()
-        logvar_prior = self.log_var_prior_loss()
-        #loss = nn.functional.mse_loss(y_hat, y.to(device))
-        loss = nll + log_prior + logvar_prior
-        self.log('val_loss', loss, prog_bar=True, on_step=False, on_epoch=True)
-    
-    def configure_optimizers(self, lr=3e-4):
-        optimizer = optim.Adam(self.parameters(), lr=lr)
-        return optimizer
-
-    def predict_step(self, batch):
-        x, y = batch
-        return self(x)
 
 def main(args):
 
@@ -119,7 +61,7 @@ def main(args):
             activation='relu', device=device)
 
     model = CCamCNN(cnn, len(oxides), args.weight_prior_precision, args.logvar_prior_mean, args.logvar_prior_precision)
-    trainer = L.Trainer(max_epochs=args.n_epo, callbacks=[EarlyStopping(monitor="val_loss", mode="min", patience=20)])
+    trainer = L.Trainer(max_epochs=args.n_epo, callbacks=[EarlyStopping(monitor="val_loss", mode="min", patience=args.es_pat)])
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
 
     #
@@ -157,9 +99,10 @@ if __name__ == "__main__":
     
     parser.add_argument('--seed', default=42, type=int, help='Random seed')
     parser.add_argument('--n_epo', default=200, type=int, help='Number training epochs')
+    parser.add_argument('--es_pat', default=50, type=int, help='Early stop patience')
     parser.add_argument('--weight_prior_precision', default=1.0, type=float, help='Weight prior precision')
-    parser.add_argument('--logvar_prior_mean', default=0.0, type=float, help='Log var prior mean')
-    parser.add_argument('--logvar_prior_precision', default=1.0, type=float, help='Log var prior precision')
+    parser.add_argument('--logvar_prior_mean', default=-0.5, type=float, help='Log var prior mean')
+    parser.add_argument('--logvar_prior_precision', default=10.0, type=float, help='Log var prior precision')
 
     args = parser.parse_args()
     
