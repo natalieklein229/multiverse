@@ -1,144 +1,132 @@
 """
-Evaluate results from CNN, PLS, laplace, VI. OLD
+Evaluate results from CNN, ensemble, laplace, VI. 
 
-TODO:
-- figures and tables
 
 """
 # %% 
-import os
+
 import pickle
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import lightning as L
-#from torchview import draw_graph
+
+from util import rmse, coverage, width, interval_score
 
 sns.set_theme(context='talk')
-
-from neural_nets.CNN import CNN
-from models import CCamCNN
 
 oxides = ['SiO2', 'TiO2', 'Al2O3', 'FeOT', 'MnO', 'MgO', 'CaO', 'Na2O', 'K2O']
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# %%
-def rmse(y, yhat):
-    if yhat.ndim == 3:
-        yhat = np.mean(yhat, 0)
-    return np.sqrt(np.mean(np.square(y-yhat),0))
 
-def coverage(y, yhat):
-    yhat_mean = np.mean(yhat, 0)
-    yhat_sd = np.std(yhat, 0)
-    c = np.logical_and(yhat_mean-2*yhat_sd <= y, yhat_mean+2*yhat_sd >= y)
-    return np.mean(c, 0)
-
-def width(yhat):
-    yhat_sd = np.std(yhat, 0)
-    return np.mean(2*yhat_sd,0)
-
-# %%
+# %% Load data and predictions, scale back as needed
 oxide_sd = np.load('/data/0/chemcam_bnn/oxide_sd.npy')
-test = np.load('/data/0/chemcam_bnn/test_oxides.npy')
-cnn_pred = np.load('results/cnn1_predictions.npy')
-#pls_pred = np.load('results/PLS_predictions.npy')
-pls_pred = np.zeros_like(cnn_pred)
-laplace_mean = np.load('results/laplace_mean_predictions.npy')
-laplace_sd = np.load('results/laplace_sd_predictions.npy')
-vi_pred = np.load('results/vi_predictions.npy')
-vi_pred = np.transpose(vi_pred,[1,0,2])
-#vi_pred = np.zeros_like(cnn_pred)
-#ensemble_pred = []
-#for i in np.arange(1, 21):
-#    tmp = np.load('results/cnn%d_predictions.npy' % i)
-#    ensemble_pred.append(tmp)
-#ensemble_pred = np.array(ensemble_pred)
-with open('results/ensemble_compiled.pkl', 'rb') as f:
-    ens_res = pickle.load(f)
-ens_pred = ens_res['ens_pred_noisy'][ens_res['rmse']<3.0]
-ensemble_pred = ens_pred.reshape([-1,ens_pred.shape[2],ens_pred.shape[3]])
-ensemble_pred /= oxide_sd*100 # since alredy scaled before
-laplace_pred = []
-for i in range(100):
-    laplace_pred.append(np.random.normal(loc=laplace_mean, scale=laplace_sd))
-laplace_pred = np.array(laplace_pred) # (100, 253, 9)
+test = np.load('/data/0/chemcam_bnn/test_oxides.npy')*oxide_sd*100
+cnn_pred = np.load('results/cnn1_predictions.npy')*oxide_sd*100
 
-for d, n in zip([cnn_pred, pls_pred, vi_pred, ensemble_pred], ['CNN', 'PLS', 'VI', 'Ensemble']):
+with open('results/laplace_predictions.pkl','rb') as f:
+    res = pickle.load(f)
+    laplace_mean = res['mean']*oxide_sd*100
+    laplace_sd = res['sd']*oxide_sd*100
+    laplace_sd_noisy = res['sd_noisy']*oxide_sd*100
+    laplace_mean_mars = res['mars_mean']*oxide_sd*100
+    laplace_sd_mars = res['mars_sd']*oxide_sd*100
+    laplace_sd_noisy_mars = res['mars_sd_noisy']*oxide_sd*100
+
+with open('results/vi_predictions.pkl','rb') as f:
+    res = pickle.load(f)
+    vi_pred = res['pred']*oxide_sd*100
+    vi_pred = np.transpose(vi_pred,[1,0,2])
+    vi_pred_noisy = res['pred_noisy']*oxide_sd*100
+    vi_pred_noisy = np.transpose(vi_pred_noisy,[1,0,2])
+    vi_pred_mars = res['mars_pred']*oxide_sd*100
+    vi_pred_mars = np.transpose(vi_pred_mars,[1,0,2])
+    vi_pred_noisy_mars = res['mars_pred_noisy']*oxide_sd*100
+    vi_pred_noisy_mars = np.transpose(vi_pred_noisy_mars,[1,0,2])
+
+with open('results/ensemble_compiled.pkl', 'rb') as f:
+    res = pickle.load(f)
+    ensemble_pred = res['ens_pred'][res['rmse']<3.0]
+    ens_pred_noisy = res['ens_pred_noisy'][res['rmse']<3.0]
+    ensemble_pred_noisy = ens_pred_noisy.reshape([-1,ens_pred_noisy.shape[2],ens_pred_noisy.shape[3]])
+    ensemble_pred_mars = res['ens_pred_mars'][res['rmse']<3.0]
+    ens_pred_noisy_mars = res['ens_pred_noisy_mars'][res['rmse']<3.0]
+    ensemble_pred_noisy_mars = ens_pred_noisy_mars.reshape([-1,ens_pred_noisy_mars.shape[2],ens_pred_noisy_mars.shape[3]])
+
+laplace_pred = []
+laplace_pred_noisy = []
+for i in range(1000):
+    laplace_pred.append(np.random.normal(loc=laplace_mean, scale=laplace_sd))
+    laplace_pred_noisy.append(np.random.normal(loc=laplace_mean, scale=laplace_sd_noisy))
+laplace_pred = np.array(laplace_pred) # (100, 253, 9)
+laplace_pred_noisy = np.array(laplace_pred_noisy) # (100, 253, 9)
+
+def print_tex(l):
+    latex_row = ' & '.join([f"{item:.2f}" for item in l]) + r' \\'
+    return latex_row
+
+for d, n in zip([cnn_pred, vi_pred_noisy, ensemble_pred_noisy, laplace_pred_noisy], ['CNN', 'VI', 'Ensemble', 'Laplace']):
     print(n)
     print('RMSE')
-    print(np.round(rmse(test,d)*oxide_sd*100,2))
-    if n in ['VI', 'Ensemble']:
+    print(print_tex(rmse(test,d)))
+    print(np.round(np.mean(rmse(test,d)),2))
+    if n in ['VI', 'Ensemble', 'Laplace']:
         print('Cov')
-        print(np.round(coverage(test,d),2))
+        print(print_tex(coverage(test,d)))
+        print(np.round(np.mean(coverage(test,d)),2))
         print('Width')
-        print(np.round(width(d)*oxide_sd*100,2))
-        print('\n')
-print('Laplace')
-print('nans')
-print(np.sum(np.any(np.isnan(laplace_sd),1)))
-good_ix = np.logical_not(np.any(np.isnan(laplace_sd),1))
-print('RMSE')
-print(np.round(np.sqrt(np.mean(np.square(test[good_ix]-laplace_mean[good_ix]),0))*oxide_sd*100,2))
-print('Cov')
-print(np.round(np.nanmean(np.logical_and(laplace_mean[good_ix]-2*laplace_sd[good_ix] <= test[good_ix], laplace_mean[good_ix]+2*laplace_sd[good_ix] >= test[good_ix]), 0),2))
-print('Width')
-print(np.round(np.nanmean(2*laplace_sd[good_ix],0)*oxide_sd*100,2))
+        print(print_tex(width(d)))
+        print(np.round(np.mean(width(d)),2))
+        print('Interval')
+        print(print_tex(interval_score(test,d)))
+        print(np.round(np.mean(interval_score(test,d)),2))
+    print('\n')
 
-# %% Mars
-mars_spec = np.load('data/mars_spec.npy')
-mars_x = torch.from_numpy(mars_spec).float().to(device)
-# Run through CNN ensemble to get mars predictions
-ensemble_versions = ['version_%d' % d for d in np.arange(1,31)]
-mars_ensemble_pred = []
-for e in ensemble_versions:
-    f = os.listdir('lightning_logs/%s/checkpoints/' % e)
 
-    cnn = CNN(in_dim=mars_spec.shape[1], out_dim=len(oxides), ch_sizes=[32,128,1],
-            krnl_sizes=[11,5,1], stride=[3,3,3], lin_l_sizes = [20, 20],
-            activation='relu', device=device)
-
-    orig_model = CCamCNN.load_from_checkpoint('lightning_logs/%s/checkpoints/%s' % (e, f[0]), cnn=cnn)
-
-    cnn_mars_pred = orig_model.cnn(mars_x.to(device)).detach().cpu().numpy()
-    mars_ensemble_pred.append(cnn_mars_pred)
-mars_ensemble_pred = np.array(mars_ensemble_pred) # (30, 253, 9)
-mars_ensemble_pred *= oxide_sd
+# %% TODO: Mars stuff and from here down with new predictions, aleatoric/epistemic, etc.
+# %% Mars evaluation
+with open('results/ensemble_compiled.pkl', 'rb') as f:
+    ens_res = pickle.load(f)
+ens_pred = ens_res['ens_pred_noisy_mars'][ens_res['rmse']<3.0]
+mars_ensemble_pred = ens_pred.reshape([-1,ens_pred.shape[2],ens_pred.shape[3]])
 mars_ensemble_mean = np.mean(mars_ensemble_pred, 0)
 mars_ensemble_sd = np.std(mars_ensemble_pred, 0)
 
 # each (253, 9)
-mars_laplace_mean = np.load('results/laplace_mars_mean_predictions.npy')
-mars_laplace_sd = np.load('results/laplace_mars_sd_predictions.npy')
-mars_laplace_mean *= oxide_sd
-mars_laplace_sd *= oxide_sd
+mars_laplace_mean = np.load('results/laplace_mars_mean_predictions.npy')*oxide_sd*100
+mars_laplace_sd = np.load('results/laplace_mars_sd_predictions.npy')*oxide_sd*100
 mars_laplace_pred = []
 for i in range(100):
     mars_laplace_pred.append(np.random.normal(loc=mars_laplace_mean, scale=mars_laplace_sd))
 mars_laplace_pred = np.array(mars_laplace_pred) # (100, 253, 9)
 
 # (100, 253, 9)
-mars_vi_pred = np.load('results/vi_mars_predictions.npy')
-mars_vi_pred *= oxide_sd
+mars_vi_pred = np.load('results/vi_mars_predictions.npy')*oxide_sd*100
 mars_vi_mean = np.mean(mars_vi_pred, 0)
 mars_vi_sd = np.std(mars_vi_pred, 0)
 
+plt.figure(figsize=(5,5))
 for dm, d, n in zip([mars_vi_pred, mars_ensemble_pred, mars_laplace_pred], 
                     [vi_pred, ensemble_pred, laplace_pred],
                     ['VI', 'Ensemble', 'Laplace']):
     print(n)
     print(oxides)
     print('Width (Mars)')
-    print(np.round(width(dm)*100,2))
+    print(np.round(width(dm),2))
     print('Width (Earth)')
-    print(np.round(width(d)*oxide_sd*100,2))
-    print('Relative Mars - Earth ')
-    rel = 100*(width(dm)*100-width(d)*oxide_sd*100)/(width(d)*oxide_sd*100)
-    print(np.round(rel.squeeze(),2))
+    print(np.round(width(d),2))
+    # print('Relative Mars - Earth ')
+    # rel = (width(dm)-width(d))/(width(d))
+    # print(np.round(rel.squeeze(),2))
+    plt.plot(width(d), width(dm), 'o', label=n)
+plt.axline([0,0],slope=1,linestyle='dashed')
+plt.xlabel('Earth width')
+plt.ylabel('Mars width')
+plt.legend()
+plt.show()
+
+
 
 # %%
 np.random.seed(42)
@@ -168,6 +156,14 @@ for mars_ix in np.random.choice(253, size=10, replace=False):
     plt.figure()
     sns.boxplot(x="Oxide", y='Prediction', hue='Model', data=df)
     plt.show()
+
+
+
+
+
+
+
+
 
 
 # %% view CNN

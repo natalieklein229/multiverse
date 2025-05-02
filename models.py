@@ -63,3 +63,13 @@ class CCamCNN(L.LightningModule):
     def predict_step(self, batch):
         x, y = batch
         return self(x)
+
+class ScaledModel(nn.Module):
+    def __init__(self, base_model, log_var):
+        super().__init__()
+        self.base_model = base_model
+        self.register_buffer('inv_std', torch.exp(-0.5 * log_var))  # shape [D]
+
+    def forward(self, x):
+        output = self.base_model(x)  # shape [batch_size, D]
+        return output * self.inv_std.unsqueeze(0)  # scale predictions

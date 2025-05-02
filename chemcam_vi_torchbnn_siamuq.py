@@ -1,29 +1,23 @@
 """
-Fit VI after NN fit. 
-TODO: check fits/hyerparams, include nprec in sampling like with laplace
-
+Fit VI after NN fit using fixed noise variance (via rescaling) and initializing at CNN fit.
 
 """
 # %%
 import gc
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-import os
 import copy
-import lightning as L
 import glob
-#import pyro
-#pyro.enable_validation(True)
+import pickle
 
 import torchbnn as bnn
 from torchhk import transform_model
-from neural_nets.CNN import CNN
-from models import CCamCNN
+from models import CCamCNN, ScaledModel
+from util import scale_targets
 
 torch.set_float32_matmul_precision('medium')
 torch.manual_seed(42)
@@ -39,23 +33,11 @@ cpath = glob.glob('lightning_logs/version_0/checkpoints/*.ckpt')
 batch_size = 256
 
 # %% Params
-n_epo = 30 # was 100
-# priors
-wp = 100.0
-#wp = 100.0 # was used before - note: is this just the initialization for variational psterior? is prior fixed?
-# fixed noise precision -- note torchbnn does not incorporate this, just does MSE
-# Role of KL weight similar?
-# nprec = .3**-2 # used for last results; was 0.1
-kl_weight = 1e-4 # was 0.1
-lr = 1e-3 # was 1e-3 
-# large lr = jumping to bad place immediately, probably getting stuck there
-# note that with this wp=100.0, the pre predictions (essentially prior draws) are goodish
-# changing wp has bad effects on convergence
-# changing kl weight? seems like higher gets better UQ... possibly worse MSE, noisier training
-
-# linear only: looks kind of reasonable (still UQ too small)
-# if include conv, prior result looks kinda weird but ends up ok. 
-# note it is overriding the pretrained model but it kind of ends up ok. 
+n_epo = 30 
+n_samp = 1000 # samples to save predictions
+wp = 100.0 # note: bad results if use 1.0
+kl_weight = 1e-4 
+lr = 1e-3 
 conv_bayes = True # convert conv to bayes or linaer only
 
 # %% data loading
@@ -71,20 +53,6 @@ test_oxides = np.load('/data/0/chemcam_bnn/test_oxides.npy')
 orig_model = CCamCNN.load_from_checkpoint(cpath[0]).eval()
 noise_prec = torch.exp(-orig_model.log_var).detach().cpu().numpy()
 noise_sd = np.squeeze(np.sqrt(1/noise_prec))
-
-class ScaledModel(nn.Module):
-    def __init__(self, base_model, log_var):
-        super().__init__()
-        self.base_model = base_model
-        self.register_buffer('inv_std', torch.exp(-0.5 * log_var))  # shape [D]
-
-    def forward(self, x):
-        output = self.base_model(x)  # shape [batch_size, D]
-        return output * self.inv_std.unsqueeze(0)  # scale predictions
-
-def scale_targets(y, log_var):
-    return y * torch.exp(-0.5 * log_var)
-
 log_var = orig_model.log_var.detach().cpu()
 log_var.requires_grad = False
 
@@ -97,10 +65,6 @@ val_loader = DataLoader(TensorDataset(torch.from_numpy(val_spec).float(),
 test_loader = DataLoader(TensorDataset(torch.from_numpy(test_spec).float(), 
                                        torch.from_numpy(test_oxides).float()),
                         batch_size=64, shuffle=False)
-
-# cnn = CNN(in_dim=train_spec.shape[1], out_dim=len(oxides), ch_sizes=[32,128,1],
-#           krnl_sizes=[11,5,1], stride=[3,3,3], lin_l_sizes = [20, 20],
-#           activation='relu', device=device)
 
 cnn_vi_copy = copy.deepcopy(orig_model.cnn)
 orig_model.to('cpu')
@@ -127,17 +91,6 @@ transform_model(cnn_vi_copy, nn.Linear, bnn.BayesLinear,
 
 model = ScaledModel(cnn_vi_copy.to(device), log_var.to(device))
 
-#%% Prior to training, get predictions
-# vi_pred_pre = []
-# for x, y in test_loader:
-#     tmp = []
-#     for p in range(100):
-#         pred = cnn_vi_copy(x.to(device)).unsqueeze(0).detach().cpu().numpy() + np.random.normal(scale=1/np.sqrt(nprec))
-#         tmp.append(pred)
-#     tmp = np.concatenate(tmp, 0)
-#     vi_pred_pre.append(tmp)
-# vi_pred_pre = np.concatenate(vi_pred_pre, 1) 
-
 # %% Fitting
 mse_loss = nn.MSELoss()
 kl_loss = bnn.BKLLoss(reduction='mean', last_layer_only=True)
@@ -158,49 +111,57 @@ for step in range(n_epo):
 
 # %% test predictions
 vi_pred = []
-#cnn_pred = []
+vi_pred_noisy = []
 for x, y in test_loader:
-    #cnn_pred.append(model.cnn(x.to(device)).detach().cpu().numpy())
     tmp = []
-    for p in range(100):
+    tmp_noisy = []
+    for p in range(n_samp):
         pred = model(x.to(device)).detach()/model.inv_std
+        tmp.append(pred[:, None, :].cpu().numpy())
         pred = pred.cpu().numpy() + np.random.normal(scale=noise_sd[None, :], size=pred.shape)
-        tmp.append(pred[:, None, :])
+        tmp_noisy.append(pred[:, None, :])
     tmp = np.concatenate(tmp, 1)
+    tmp_noisy = np.concatenate(tmp_noisy, 1)
     vi_pred.append(tmp)
-#cnn_pred = np.concatenate(cnn_pred, 0)
+    vi_pred_noisy.append(tmp_noisy)
 vi_pred = np.concatenate(vi_pred, 0) 
+vi_pred_noisy = np.concatenate(vi_pred_noisy, 0) 
 
 # %%
-vi_mean = np.mean(vi_pred, 1)
-vi_sd = np.std(vi_pred, 1)
-#vi_mean_pre = np.mean(vi_pred_pre, 0)
-#vi_sd_pre = np.std(vi_pred_pre, 0)
+# vi_mean = np.mean(vi_pred, 1)
+# vi_sd = np.std(vi_pred, 1)
+# #vi_mean_pre = np.mean(vi_pred_pre, 0)
+# #vi_sd_pre = np.std(vi_pred_pre, 0)
 
-for i in range(len(oxides)):
-    plt.figure()
-    plt.plot(test_oxides[:, i], vi_mean[:, i], 'k.')
-    plt.errorbar(test_oxides[:, i], vi_mean[:, i], yerr=vi_sd[:, i], fmt='k.')
-    #plt.plot(test_oxides[:, i], cnn_pred[:, i], 'r.')
-    #plt.plot(test_oxides[:, i], vi_mean_pre[:, i], 'c.', alpha=0.7)
-    #plt.errorbar(test_oxides[:, i], vi_mean_pre[:, i], yerr=vi_sd_pre[:, i], fmt='c.', alpha=0.7)
-    plt.axline([0,0], slope=1)
-    plt.title(oxides[i])
-    plt.savefig('test%d.png' % i)
-    plt.show()
+# for i in range(len(oxides)):
+#     plt.figure()
+#     plt.plot(test_oxides[:, i], vi_mean[:, i], 'k.')
+#     plt.errorbar(test_oxides[:, i], vi_mean[:, i], yerr=vi_sd[:, i], fmt='k.')
+#     #plt.plot(test_oxides[:, i], cnn_pred[:, i], 'r.')
+#     #plt.plot(test_oxides[:, i], vi_mean_pre[:, i], 'c.', alpha=0.7)
+#     #plt.errorbar(test_oxides[:, i], vi_mean_pre[:, i], yerr=vi_sd_pre[:, i], fmt='c.', alpha=0.7)
+#     plt.axline([0,0], slope=1)
+#     plt.title(oxides[i])
+#     plt.savefig('test%d.png' % i)
+#     plt.show()
 
-# %% Mars perdictions
+# %% Mars predictions
 mars_x = torch.from_numpy(mars_spec).float().to(device)
-tmp = []
-for p in range(100):
+mars_pred = []
+mars_pred_noisy = []
+for p in range(n_samp):
     pred = model(mars_x.to(device)).detach()/model.inv_std
-    pred = pred.cpu().numpy() + np.random.normal(scale=noise_sd,size=pred.shape)
-    tmp.append(pred)
-tmp = np.concatenate(tmp, 0)
-mars_vi_pred = tmp
+    mars_pred.append(pred[:, None, :].cpu().numpy())
+    pred = pred.cpu().numpy() + np.random.normal(scale=noise_sd[None, :], size=pred.shape)
+    mars_pred_noisy.append(pred[:, None, :])
+mars_pred = np.concatenate(mars_pred, 1)
+mars_pred_noisy = np.concatenate(mars_pred_noisy, 1)
 
-# %% save -- maybe some issues saving pyro models... 
-np.save('results/vi_predictions.npy', vi_pred)
-np.save('results/vi_mars_predictions.npy', mars_vi_pred)
+# %% save 
+res = {'pred': vi_pred, 'pred_noisy': vi_pred_noisy,
+       'mars_pred': mars_pred, 'mars_pred_noisy': mars_pred_noisy
+       }
+with open('results/vi_predictions.pkl','wb') as f:
+    pickle.dump(res, f)
 
 # %%
