@@ -17,7 +17,7 @@ import gc
 import pickle
 
 from models import CCamCNN, ScaledModel
-from util import scale_targets, freeze_all_but_last_linear
+from util import scale_targets, freeze_all_but_last_n_linear
 
 torch.set_float32_matmul_precision('medium')
 torch.manual_seed(42)
@@ -70,7 +70,7 @@ torch.cuda.empty_cache()
 # %% Linearized Laplace
 model = ScaledModel(cnn_copy, log_var.to(device))
 # Freeze all but last linear (last-layer Laplace)
-freeze_all_but_last_linear(model)
+freeze_all_but_last_n_linear(model,n=1)
 
 la = Laplace(model, 'regression',
              subset_of_weights='all',

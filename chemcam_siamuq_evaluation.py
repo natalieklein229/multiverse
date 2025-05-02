@@ -19,7 +19,6 @@ sns.set_theme(context='talk')
 oxides = ['SiO2', 'TiO2', 'Al2O3', 'FeOT', 'MnO', 'MgO', 'CaO', 'Na2O', 'K2O']
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
 # %% Load data and predictions, scale back as needed
 oxide_sd = np.load('/data/0/chemcam_bnn/oxide_sd.npy')
 test = np.load('/data/0/chemcam_bnn/test_oxides.npy')*oxide_sd*100
@@ -61,6 +60,13 @@ for i in range(1000):
     laplace_pred_noisy.append(np.random.normal(loc=laplace_mean, scale=laplace_sd_noisy))
 laplace_pred = np.array(laplace_pred) # (100, 253, 9)
 laplace_pred_noisy = np.array(laplace_pred_noisy) # (100, 253, 9)
+laplace_pred_mars = []
+laplace_pred_noisy_mars = []
+for i in range(1000):
+    laplace_pred_mars.append(np.random.normal(loc=laplace_mean_mars, scale=laplace_sd_mars))
+    laplace_pred_noisy_mars.append(np.random.normal(loc=laplace_mean_mars, scale=laplace_sd_noisy_mars))
+laplace_pred_mars = np.array(laplace_pred_mars) # (100, 253, 9)
+laplace_pred_noisy_mars = np.array(laplace_pred_noisy_mars) # (100, 253, 9)
 
 def print_tex(l):
     latex_row = ' & '.join([f"{item:.2f}" for item in l]) + r' \\'
@@ -83,48 +89,81 @@ for d, n in zip([cnn_pred, vi_pred_noisy, ensemble_pred_noisy, laplace_pred_nois
         print(np.round(np.mean(interval_score(test,d)),2))
     print('\n')
 
+# %% Calibration plot
+n_cal = 10
+cal_vals = np.linspace(0,1,n_cal)
+cov_vals = {'Laplace':np.zeros(n_cal), 'VB':np.zeros(n_cal), 'Ensemble':np.zeros(n_cal)}
+for i, c in enumerate(cal_vals):
+    cov_vals['Laplace'][i] = coverage(test,laplace_pred_noisy,alpha=c).mean()
+    cov_vals['VB'][i] = coverage(test,vi_pred_noisy,alpha=c).mean()
+    cov_vals['Ensemble'][i] = coverage(test,ensemble_pred_noisy,alpha=c).mean()
+
+cov_vals['ref'] = cal_vals
+cov_vals = pd.DataFrame(cov_vals).melt(id_vars='ref', var_name='Method', value_name='coverage')
+cov_vals = cov_vals.rename(columns={'ref':'Desired Coverage','coverage':'Observed Coverage'})
+plt.figure(figsize=(5,5))
+sns.lineplot(cov_vals,x='Desired Coverage',y='Observed Coverage',hue='Method')
+plt.axline([0,0],slope=1,linestyle='dashed',color='grey')
+plt.savefig('figures/calibration_plot.png', bbox_inches='tight', dpi=300)
+
+# %% Epistemic fraction
+ens_epi = np.var(ensemble_pred,0)/np.var(ensemble_pred_noisy,0)
+vi_epi = np.var(vi_pred,0)/np.var(vi_pred_noisy,0)
+laplace_epi = np.var(laplace_pred,0)/np.var(laplace_pred_noisy,0)
+df = {'Ensemble':ens_epi.flatten(), 'VB':vi_epi.flatten(), 'Laplace':laplace_epi.flatten(),
+      'Oxide':np.tile(oxides,(len(ens_epi),1)).flatten()}
+df = pd.DataFrame(df).melt(id_vars='Oxide', var_name='Method', value_name='Epistemic Fraction')
+plt.figure(figsize=(12,4))
+sns.boxplot(df,x='Oxide',y='Epistemic Fraction',hue='Method', fliersize=1.5)
+sns.move_legend(plt.gca(), "upper left", bbox_to_anchor=(1, 1))
+plt.tight_layout()
+plt.savefig('figures/epistemic_frac.png', bbox_inches='tight', dpi=300)
 
 # %% TODO: Mars stuff and from here down with new predictions, aleatoric/epistemic, etc.
-# %% Mars evaluation
-with open('results/ensemble_compiled.pkl', 'rb') as f:
-    ens_res = pickle.load(f)
-ens_pred = ens_res['ens_pred_noisy_mars'][ens_res['rmse']<3.0]
-mars_ensemble_pred = ens_pred.reshape([-1,ens_pred.shape[2],ens_pred.shape[3]])
-mars_ensemble_mean = np.mean(mars_ensemble_pred, 0)
-mars_ensemble_sd = np.std(mars_ensemble_pred, 0)
+# %% Mars evaluation of epistemic uncertainty
+ens_epi_mars = np.var(ensemble_pred_mars,0)/np.var(ensemble_pred_noisy_mars,0)
+vi_epi_mars = np.var(vi_pred_mars,0)/np.var(vi_pred_noisy_mars,0)
+laplace_epi_mars = np.var(laplace_pred_mars,0)/np.var(laplace_pred_noisy_mars,0)
+ens_df = pd.DataFrame({'Oxide':oxides+oxides, 
+                       'Epistemic Fraction':np.concatenate([np.mean(ens_epi,0),np.mean(ens_epi_mars,0)]),
+                       'Dataset':['Earth']*len(oxides) + ['Mars']*len(oxides),
+                       'Method':'Ensemble'})
+vi_df = pd.DataFrame({'Oxide':oxides+oxides, 
+                       'Epistemic Fraction':np.concatenate([np.mean(vi_epi,0),np.mean(vi_epi_mars,0)]),
+                       'Dataset':['Earth']*len(oxides) + ['Mars']*len(oxides),
+                       'Method':'VB'})
+laplace_df = pd.DataFrame({'Oxide':oxides+oxides, 
+                       'Epistemic Fraction':np.concatenate([np.mean(laplace_epi,0),np.mean(laplace_epi_mars,0)]),
+                       'Dataset':['Earth']*len(oxides) + ['Mars']*len(oxides),
+                       'Method':'Laplace'})
+df = pd.concat([ens_df, vi_df],axis=0)
 
-# each (253, 9)
-mars_laplace_mean = np.load('results/laplace_mars_mean_predictions.npy')*oxide_sd*100
-mars_laplace_sd = np.load('results/laplace_mars_sd_predictions.npy')*oxide_sd*100
-mars_laplace_pred = []
-for i in range(100):
-    mars_laplace_pred.append(np.random.normal(loc=mars_laplace_mean, scale=mars_laplace_sd))
-mars_laplace_pred = np.array(mars_laplace_pred) # (100, 253, 9)
+color_dict = {'Mars': 'red', 'Earth': 'blue'}
+g = sns.FacetGrid(df, col='Method', height=4, aspect=1.5)
+g.map_dataframe(sns.barplot,x='Oxide',y='Epistemic Fraction',hue='Dataset',palette=color_dict)
+g.add_legend()
+plt.savefig('figures/epistemic_frac_mars.png', bbox_inches='tight', dpi=300)
 
-# (100, 253, 9)
-mars_vi_pred = np.load('results/vi_mars_predictions.npy')*oxide_sd*100
-mars_vi_mean = np.mean(mars_vi_pred, 0)
-mars_vi_sd = np.std(mars_vi_pred, 0)
 
-plt.figure(figsize=(5,5))
-for dm, d, n in zip([mars_vi_pred, mars_ensemble_pred, mars_laplace_pred], 
-                    [vi_pred, ensemble_pred, laplace_pred],
-                    ['VI', 'Ensemble', 'Laplace']):
-    print(n)
-    print(oxides)
-    print('Width (Mars)')
-    print(np.round(width(dm),2))
-    print('Width (Earth)')
-    print(np.round(width(d),2))
-    # print('Relative Mars - Earth ')
-    # rel = (width(dm)-width(d))/(width(d))
-    # print(np.round(rel.squeeze(),2))
-    plt.plot(width(d), width(dm), 'o', label=n)
-plt.axline([0,0],slope=1,linestyle='dashed')
-plt.xlabel('Earth width')
-plt.ylabel('Mars width')
-plt.legend()
-plt.show()
+# plt.figure(figsize=(5,5))
+# for dm, d, n in zip([mars_vi_pred, mars_ensemble_pred, mars_laplace_pred], 
+#                     [vi_pred, ensemble_pred, laplace_pred],
+#                     ['VI', 'Ensemble', 'Laplace']):
+#     print(n)
+#     print(oxides)
+#     print('Width (Mars)')
+#     print(np.round(width(dm),2))
+#     print('Width (Earth)')
+#     print(np.round(width(d),2))
+#     # print('Relative Mars - Earth ')
+#     # rel = (width(dm)-width(d))/(width(d))
+#     # print(np.round(rel.squeeze(),2))
+#     plt.plot(width(d), width(dm), 'o', label=n)
+# plt.axline([0,0],slope=1,linestyle='dashed')
+# plt.xlabel('Earth width')
+# plt.ylabel('Mars width')
+# plt.legend()
+# plt.show()
 
 
 

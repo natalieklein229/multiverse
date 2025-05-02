@@ -54,3 +54,28 @@ def freeze_all_but_last_linear(model):
         param.requires_grad = True
 
     print(f"Unfroze last linear layer: {last_linear}")
+
+def freeze_all_but_last_n_linear(model, n=1):
+    """
+    Freezes all parameters in the model except those in the last `n` nn.Linear layers.
+    
+    Parameters:
+        model (nn.Module): The model to modify.
+        n (int): Number of last Linear layers to keep unfrozen.
+    """
+    # Collect all Linear layers in the order they appear
+    linear_layers = [module for module in model.modules() if isinstance(module, nn.Linear)]
+
+    if len(linear_layers) < n:
+        raise ValueError(f"Model has only {len(linear_layers)} Linear layers, but n={n} was requested.")
+
+    # Step 1: Freeze all parameters
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # Step 2: Unfreeze the last `n` Linear layers
+    for layer in linear_layers[-n:]:
+        for param in layer.parameters():
+            param.requires_grad = True
+
+    print(f"Unfroze last {n} linear layer(s): {linear_layers[-n:]}")
