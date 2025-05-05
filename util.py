@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from scipy.stats import norm
+from collections import defaultdict
 
 def rmse(y, yhat):
     if yhat.ndim == 3:
@@ -79,3 +80,17 @@ def freeze_all_but_last_n_linear(model, n=1):
             param.requires_grad = True
 
     print(f"Unfroze last {n} linear layer(s): {linear_layers[-n:]}")
+
+
+def get_groups(labels):
+    # Get unique rows and group indices
+    unique_labels, inverse = np.unique(labels, axis=0, return_inverse=True)
+
+    # Create groups: inverse maps each row to its group index
+    from collections import defaultdict
+
+    group_indices = defaultdict(list)
+    for i, group_id in enumerate(inverse):
+        group_indices[group_id].append(i)
+    
+    return group_indices

@@ -33,6 +33,7 @@ cpath = glob.glob('lightning_logs/version_0/checkpoints/*.ckpt')
 
 # %% Params
 prior_precision = 1.0 #match MAP training
+#prior_precision = 10000.0 # match VI
 
 # %% data loading
 train_spec = np.load('/data/0/chemcam_bnn/train_spec.npy')

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
 
-from util import rmse, coverage, width, interval_score
+from util import rmse, coverage, width, interval_score, get_groups
 
 sns.set_theme(context='talk')
 
@@ -20,6 +20,9 @@ oxides = ['SiO2', 'TiO2', 'Al2O3', 'FeOT', 'MnO', 'MgO', 'CaO', 'Na2O', 'K2O']
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # %% Load data and predictions, scale back as needed
+train_spec = np.load('/data/0/chemcam_bnn/train_spec.npy')
+train_oxides = np.load('/data/0/chemcam_bnn/train_oxides.npy')
+train_wav = np.load('/data/0/chemcam_bnn/train_wav.npy')
 oxide_sd = np.load('/data/0/chemcam_bnn/oxide_sd.npy')
 test = np.load('/data/0/chemcam_bnn/test_oxides.npy')*oxide_sd*100
 cnn_pred = np.load('results/cnn1_predictions.npy')*oxide_sd*100
@@ -89,6 +92,91 @@ for d, n in zip([cnn_pred, vi_pred_noisy, ensemble_pred_noisy, laplace_pred_nois
         print(np.round(np.mean(interval_score(test,d)),2))
     print('\n')
 
+# %% TODO Plot aleatoric/epistemic predictions for some targets for Si02, K20
+from matplotlib.patches import Patch
+def aggregate_predictions(means, variances):
+    n = len(means)
+    mean_avg = np.mean(means,0)
+    var_avg = np.sum(variances,0) / n #**2
+    return mean_avg, np.sqrt(var_avg)
+
+np.random.seed(42)
+test_targ = get_groups(test)
+targ_sel = np.random.choice(len(test_targ.keys()),20)
+ox_ind = 0
+
+plt.figure(figsize=(18,12))
+counter = 1
+for pi, ox_ind in enumerate([0,8]):
+    for tmp_, tmp_noisy_, nm in zip([vi_pred, ensemble_pred, laplace_pred],[vi_pred_noisy, ensemble_pred_noisy, laplace_pred_noisy],['VB','Ensemble','Laplace']):
+        plt.subplot(2,3,counter)
+        min_x = 100
+        for i, ti in enumerate(targ_sel):
+            ix = test_targ[targ_sel[i]]
+            tmp = tmp_[:, ix, :]
+            tmp_noisy = tmp_noisy_[:, ix, :]
+            tmp_mean, tmp_sd = aggregate_predictions(np.mean(tmp,0), np.var(tmp,0))
+            tmp_noisy_mean, tmp_noisy_sd = aggregate_predictions(np.mean(tmp_noisy,0), np.var(tmp_noisy,0))
+            plt.errorbar(test[ix][0,ox_ind],tmp_mean[ox_ind],yerr=2*tmp_noisy_sd[ox_ind],  ecolor='blue', fmt='none')
+            plt.errorbar(test[ix][0,ox_ind],tmp_mean[ox_ind],yerr=2*tmp_sd[ox_ind], elinewidth=5.0, ecolor='red', fmt='none')
+            plt.plot(test[ix][0,ox_ind],tmp_mean[ox_ind],'k.')
+            if test[ix][0,ox_ind] < min_x:
+                min_x = test[ix][0,ox_ind]
+        plt.axline([0.95*min_x,0.95*min_x], slope=1, linestyle='dashed', color='grey')
+        if counter > 3:
+            plt.xlabel('Reference value (ox. wt. %)')
+        if counter == 1 or counter == 4:
+            plt.ylabel('Predicted value (ox. wt. %)')
+        plt.gca().text(0.03, 0.97, oxides[ox_ind], transform=plt.gca().transAxes,
+        horizontalalignment='left', verticalalignment='top')
+        custom_lines = [Patch(facecolor='red', edgecolor='none', linewidth=2),
+                        Patch(facecolor='blue', edgecolor='none', linewidth=1)]
+        custom_labels = ['Epistemic', 'Total']
+        plt.legend(custom_lines, custom_labels, loc='lower right')
+        plt.title(nm)
+        counter += 1
+plt.tight_layout()
+plt.savefig('figures/ref_v_pred_uq.png',bbox_inches='tight',dpi=300)
+
+# %% Prediction error v uncertainty (across all oxides)
+np.random.seed(42)
+plt.figure(figsize=(10,5))
+counter = 1
+test_targ = get_groups(test)
+for tmp_, tmp_noisy_, nm in zip([vi_pred, ensemble_pred],
+                                [vi_pred_noisy, ensemble_pred_noisy],
+                                ['VB','Ensemble',]):
+    errs = []
+    epi = []
+    total = []
+    for i, ti in enumerate(test_targ.keys()):
+        ix = test_targ[i]
+        tmp = tmp_[:, ix, :]
+        tmp_noisy = tmp_noisy_[:, ix, :]
+        tmp_mean, tmp_sd = aggregate_predictions(np.mean(tmp,0), np.var(tmp,0))
+        tmp_noisy_mean, tmp_noisy_sd = aggregate_predictions(np.mean(tmp_noisy,0), np.var(tmp_noisy,0))
+        label = test[ix][0]
+        err = np.sqrt(np.mean(np.square(label-np.mean(tmp_noisy,0)),0))
+        errs.append(err)
+        epi.append(tmp_sd)
+        total.append(tmp_noisy_sd)
+    errs = np.concatenate(errs)
+    epi = np.concatenate(epi)
+    total = np.concatenate(total)
+    if counter == 1:
+        ax = plt.subplot(1,2,counter)
+    else:
+        plt.subplot(1,2,counter,sharey=ax,sharex=ax)
+    plt.plot(errs,epi,'r.',label='Epistemic')
+    #plt.plot(errs,total,'b.',label='Total')
+    plt.xlabel('Prediction RMSE')
+    plt.ylabel('Epistemic uncertainty')
+    plt.title(nm)
+    counter += 1
+#plt.legend()
+plt.tight_layout()
+plt.savefig('figures/err_v_uq.png', bbox_inches='tight', dpi=300)
+
 # %% Calibration plot
 n_cal = 10
 cal_vals = np.linspace(0,1,n_cal)
@@ -119,7 +207,6 @@ sns.move_legend(plt.gca(), "upper left", bbox_to_anchor=(1, 1))
 plt.tight_layout()
 plt.savefig('figures/epistemic_frac.png', bbox_inches='tight', dpi=300)
 
-# %% TODO: Mars stuff and from here down with new predictions, aleatoric/epistemic, etc.
 # %% Mars evaluation of epistemic uncertainty
 ens_epi_mars = np.var(ensemble_pred_mars,0)/np.var(ensemble_pred_noisy_mars,0)
 vi_epi_mars = np.var(vi_pred_mars,0)/np.var(vi_pred_noisy_mars,0)
@@ -144,134 +231,31 @@ g.map_dataframe(sns.barplot,x='Oxide',y='Epistemic Fraction',hue='Dataset',palet
 g.add_legend()
 plt.savefig('figures/epistemic_frac_mars.png', bbox_inches='tight', dpi=300)
 
-
-# plt.figure(figsize=(5,5))
-# for dm, d, n in zip([mars_vi_pred, mars_ensemble_pred, mars_laplace_pred], 
-#                     [vi_pred, ensemble_pred, laplace_pred],
-#                     ['VI', 'Ensemble', 'Laplace']):
-#     print(n)
-#     print(oxides)
-#     print('Width (Mars)')
-#     print(np.round(width(dm),2))
-#     print('Width (Earth)')
-#     print(np.round(width(d),2))
-#     # print('Relative Mars - Earth ')
-#     # rel = (width(dm)-width(d))/(width(d))
-#     # print(np.round(rel.squeeze(),2))
-#     plt.plot(width(d), width(dm), 'o', label=n)
-# plt.axline([0,0],slope=1,linestyle='dashed')
-# plt.xlabel('Earth width')
-# plt.ylabel('Mars width')
-# plt.legend()
-# plt.show()
-
-
-
-# %%
-np.random.seed(42)
-for mars_ix in np.random.choice(253, size=10, replace=False):
-    #mars_ix = 1 # which mars data point
-    df_samples = []
-    df_models = []
-    df_oxides = []
-    for i, ox in enumerate(oxides):
-        # ensemble
-        tmp = list(mars_ensemble_pred[:, mars_ix, i])
-        df_samples += tmp
-        df_models += ['Ensemble']*len(tmp)
-        df_oxides += [ox]*len(tmp)
-        # laplace
-        tmp = list(mars_laplace_pred[:, mars_ix, i])
-        df_samples += tmp
-        df_models += ['Laplace']*len(tmp)
-        df_oxides += [ox]*len(tmp)
-        # VI
-        tmp = list(mars_vi_pred[:, mars_ix, i])
-        df_samples += tmp
-        df_models += ['VI']*len(tmp)
-        df_oxides += [ox]*len(tmp)
-    df = pd.DataFrame({'Model':df_models, 'Oxide':df_oxides, 'Prediction':df_samples})
-
-    plt.figure()
-    sns.boxplot(x="Oxide", y='Prediction', hue='Model', data=df)
-    plt.show()
-
-
-
-
-
-
-
-
-
-
-# %% view CNN
-model_graph = draw_graph(orig_model.cnn, input_size=(64, mars_spec.shape[1]), 
-                         device='meta', #graph_dir='LR', 
-                         save_graph=True)
-model_graph.visual_graph    
-
-# %% Plot some data
-train_oxides = np.load('data/train_oxides.npy')
-train_oxides_df = pd.DataFrame(data=train_oxides*oxide_sd*100,
-                               index=np.arange(len(train_oxides)),
-                               columns=oxides)
-
-sns.pairplot(train_oxides_df, diag_kind='kde',
-             x_vars=['SiO2','FeOT','MgO'], y_vars=['SiO2','FeOT','MgO'])
-plt.savefig('figures/oxide_pairplot.png', dpi=300)
-plt.show()
-# %%
-train_spec_nonorm = np.load('data/train_spec_nonorm.npy')
-train_wav = np.load('data/train_wav.npy')
-
-# %%
-mean_spec = np.mean(train_spec_nonorm,0)
-min_spec = np.min(train_spec_nonorm,0)
-max_spec = np.max(train_spec_nonorm,0)
-sd_spec = np.std(train_spec_nonorm, 0)
-plt.figure()
-plt.plot(train_wav, mean_spec)
-#plt.fill_between(train_wav, min_spec, max_spec, color='red', alpha=0.7)
-plt.fill_between(train_wav, mean_spec-sd_spec, mean_spec+sd_spec, color='red', alpha=0.7)
-plt.show()
-
-# %%
-
-vnir_range = [492.427, 849.0]
-vio_range = [382.13, 473.184]
-uv_range = [246.635, 338.457]
-vnir_mask = np.logical_and(train_wav >= vnir_range[0], train_wav <= vnir_range[1])
-np.random.seed(42)
-plt.figure(figsize=(10,3))
-plt.plot(train_wav[vnir_mask], train_spec_nonorm[:, vnir_mask][np.random.choice(len(train_spec_nonorm), 30)].T)
+# %% Spectral plot
+train_targ = get_groups(train_oxides)
+targ_sel = np.random.choice(len(train_targ.keys()),5)
+plt.figure(figsize=(12,12))
+for i, ti in enumerate(targ_sel):
+    plt.subplot(5,1,i+1)
+    spec_tmp = train_spec[train_targ[ti],:]
+    print(spec_tmp.shape)
+    plt.plot(train_wav, np.mean(spec_tmp,0),'k', linewidth=0.7)
+    plt.fill_between(train_wav, np.mean(spec_tmp,0) - 2*np.std(spec_tmp,0),
+                     np.mean(spec_tmp,0) + 2*np.std(spec_tmp,0), alpha=0.7)
+    plt.xlim([390,650])
+    plt.yticks([])
+    plt.ylabel('Intensity (a.u.)')
 plt.xlabel('Wavelength (nm)')
-plt.ylabel('Intensity (a.u.)')
-plt.savefig('figures/train_spec_examples.png', dpi=300, bbox_inches='tight')
-plt.show()
+plt.tight_layout()
+plt.savefig('figures/spectra.png', bbox_inches='tight', dpi=300)
 
-# %%
-test_oxides = np.load('data/test_oxides.npy')
-for i in range(len(oxides)):
+# %% Composition plot
+train_ox_unique = np.unique(train_oxides,axis=0)*oxide_sd*100
+ox_df = pd.DataFrame(train_ox_unique, columns=oxides)
+sns.pairplot(ox_df, kind='kde')
+plt.savefig('figures/oxides.png', bbox_inches='tight', dpi=300)
 
-    plt.figure(figsize=(9,5))
-    ax = plt.subplot(121)
-    plt.axline([0,0], slope=1)
-    plt.plot(test_oxides[:, i]*oxide_sd[0,i]*100, pls_pred[:, i]*oxide_sd[0,i]*100, 'k.')
-    plt.xlabel("Reference")
-    plt.ylabel('Predicted')
-    plt.title('PLS (RMSE: %0.2f)' % (rmse(test_oxides,pls_pred)[i]*oxide_sd[0,i]*100))
-    plt.subplot(122, sharex=ax, sharey=ax)
-    plt.axline([0,0], slope=1)
-    plt.plot(test_oxides[:, i]*oxide_sd[0,i]*100, cnn_pred[:, i]*oxide_sd[0,i]*100, 'k.')
-    plt.xlabel("Reference")
-    plt.title('CNN (RMSE: %0.2f)' % (rmse(test_oxides,cnn_pred)[i]*oxide_sd[0,i]*100))
-    plt.suptitle(oxides[i])
-    plt.tight_layout()
-    plt.savefig('figures/cnn_pls_ref_v_predicted_%s.png'%oxides[i], dpi=300, bbox_inches='tight')
-    plt.show()
 
-    worst = np.argmax(np.abs(test_oxides-pls_pred)[:, i])
-    print(np.round(test_oxides[worst, :]*oxide_sd[0,:]*100,2))
 
-# %%
+
+
