@@ -1,6 +1,7 @@
 """
 Evaluate results from CNN, ensemble, laplace, VI. 
 
+TODO: undo commenting out Mars
 
 """
 # %% 
@@ -32,9 +33,9 @@ with open('results/laplace_predictions.pkl','rb') as f:
     laplace_mean = res['mean']*oxide_sd*100
     laplace_sd = res['sd']*oxide_sd*100
     laplace_sd_noisy = res['sd_noisy']*oxide_sd*100
-    laplace_mean_mars = res['mars_mean']*oxide_sd*100
-    laplace_sd_mars = res['mars_sd']*oxide_sd*100
-    laplace_sd_noisy_mars = res['mars_sd_noisy']*oxide_sd*100
+    #laplace_mean_mars = res['mars_mean']*oxide_sd*100
+    #laplace_sd_mars = res['mars_sd']*oxide_sd*100
+    #laplace_sd_noisy_mars = res['mars_sd_noisy']*oxide_sd*100
 
 with open('results/vi_predictions.pkl','rb') as f:
     res = pickle.load(f)
@@ -63,13 +64,13 @@ for i in range(1000):
     laplace_pred_noisy.append(np.random.normal(loc=laplace_mean, scale=laplace_sd_noisy))
 laplace_pred = np.array(laplace_pred) # (100, 253, 9)
 laplace_pred_noisy = np.array(laplace_pred_noisy) # (100, 253, 9)
-laplace_pred_mars = []
-laplace_pred_noisy_mars = []
-for i in range(1000):
-    laplace_pred_mars.append(np.random.normal(loc=laplace_mean_mars, scale=laplace_sd_mars))
-    laplace_pred_noisy_mars.append(np.random.normal(loc=laplace_mean_mars, scale=laplace_sd_noisy_mars))
-laplace_pred_mars = np.array(laplace_pred_mars) # (100, 253, 9)
-laplace_pred_noisy_mars = np.array(laplace_pred_noisy_mars) # (100, 253, 9)
+# laplace_pred_mars = []
+# laplace_pred_noisy_mars = []
+# for i in range(1000):
+#     laplace_pred_mars.append(np.random.normal(loc=laplace_mean_mars, scale=laplace_sd_mars))
+#     laplace_pred_noisy_mars.append(np.random.normal(loc=laplace_mean_mars, scale=laplace_sd_noisy_mars))
+# laplace_pred_mars = np.array(laplace_pred_mars) # (100, 253, 9)
+# laplace_pred_noisy_mars = np.array(laplace_pred_noisy_mars) # (100, 253, 9)
 
 def print_tex(l):
     latex_row = ' & '.join([f"{item:.2f}" for item in l]) + r' \\'
@@ -92,7 +93,7 @@ for d, n in zip([cnn_pred, vi_pred_noisy, ensemble_pred_noisy, laplace_pred_nois
         print(np.round(np.mean(interval_score(test,d)),2))
     print('\n')
 
-# %% TODO Plot aleatoric/epistemic predictions for some targets for Si02, K20
+# %% Plot aleatoric/epistemic predictions for some targets for Si02, K20
 from matplotlib.patches import Patch
 def aggregate_predictions(means, variances):
     n = len(means)
@@ -145,7 +146,7 @@ counter = 1
 test_targ = get_groups(test)
 for tmp_, tmp_noisy_, nm in zip([vi_pred, ensemble_pred],
                                 [vi_pred_noisy, ensemble_pred_noisy],
-                                ['VB','Ensemble',]):
+                                ['VB','Ensemble']):
     errs = []
     epi = []
     total = []
@@ -223,12 +224,13 @@ laplace_df = pd.DataFrame({'Oxide':oxides+oxides,
                        'Epistemic Fraction':np.concatenate([np.mean(laplace_epi,0),np.mean(laplace_epi_mars,0)]),
                        'Dataset':['Earth']*len(oxides) + ['Mars']*len(oxides),
                        'Method':'Laplace'})
-df = pd.concat([ens_df, vi_df],axis=0)
+df = pd.concat([ens_df, vi_df, laplace_df],axis=0)
 
 color_dict = {'Mars': 'red', 'Earth': 'blue'}
 g = sns.FacetGrid(df, col='Method', height=4, aspect=1.5)
 g.map_dataframe(sns.barplot,x='Oxide',y='Epistemic Fraction',hue='Dataset',palette=color_dict)
 g.add_legend()
+plt.tight_layout()
 plt.savefig('figures/epistemic_frac_mars.png', bbox_inches='tight', dpi=300)
 
 # %% Spectral plot

@@ -24,10 +24,10 @@ def width(yhat, alpha=0.95):
 def interval_score(y, yhat, alpha=0.95):
     yhat_mean = np.mean(yhat, 0)
     yhat_sd = np.std(yhat, 0)
-    w = width(yhat)
+    w = width(yhat) # mean width
     b = norm.ppf((1 + alpha) / 2)
-    p1 = 2/alpha * np.sum(y < yhat_mean-b*yhat_sd, 0)
-    p2 = 2/alpha * np.sum(y > yhat_mean+b*yhat_sd, 0)
+    p1 = 2/(1-alpha) * np.mean(y < yhat_mean-b*yhat_sd, 0)
+    p2 = 2/(1-alpha) * np.mean(y > yhat_mean+b*yhat_sd, 0)
     return w + p1 + p2
 
 def scale_targets(y, log_var):
@@ -81,6 +81,71 @@ def freeze_all_but_last_n_linear(model, n=1):
 
     print(f"Unfroze last {n} linear layer(s): {linear_layers[-n:]}")
 
+def freeze_all_but_first_layer(model):
+    """
+    Freezes all parameters in the model except those in the first layer (by order of appearance).
+    """
+    first_linear = None
+
+    # Step 1: Identify the first nn.Linear or nn.Conv layer
+    for module in model.modules():
+        if isinstance(module, (nn.Linear, nn.Conv1d, nn.Conv2d)):
+            first_linear = module
+            break
+
+    if first_linear is None:
+        raise ValueError("No supported first layer (Linear or Conv) found in model.")
+
+    # Step 2: Freeze all parameters
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # Step 3: Unfreeze only the first layer
+    for param in first_linear.parameters():
+        param.requires_grad = True
+
+    print(f"Unfroze first layer: {first_linear}")
+
+def unfreeze_only_third_conv(model):
+    """
+    Freezes all parameters in the model, then unfreezes only the third convolutional layer.
+    """
+    # Step 1: Freeze all parameters
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # Step 2: Find and unfreeze the third Conv layer
+    conv_layers = [m for m in model.modules() if isinstance(m, (nn.Conv1d, nn.Conv2d))]
+
+    if len(conv_layers) < 3:
+        raise ValueError(f"Model has only {len(conv_layers)} Conv layers. Cannot unfreeze the third one.")
+
+    third_conv = conv_layers[2]
+    for param in third_conv.parameters():
+        param.requires_grad = True
+
+    print(f"Unfroze only the third conv layer: {third_conv}")
+
+def unfreeze_second_to_last_layer(model):
+    """
+    Freezes all parameters in the model, then unfreezes only the second-to-last parameterized layer.
+    """
+    # Step 1: Find all layers (modules) with parameters
+    param_layers = [m for m in model.modules() if any(p.requires_grad for p in m.parameters(recurse=False))]
+
+    if len(param_layers) < 2:
+        raise ValueError("Model has fewer than two parameterized layers.")
+
+    # Step 2: Freeze everything
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # Step 3: Unfreeze only the second-to-last layer
+    target_layer = param_layers[-2]
+    for param in target_layer.parameters():
+        param.requires_grad = True
+
+    print(f"Unfroze only the second-to-last layer: {target_layer}")
 
 def get_groups(labels):
     # Get unique rows and group indices

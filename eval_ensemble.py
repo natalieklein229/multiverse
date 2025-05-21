@@ -42,6 +42,7 @@ ens_mean_rmse = []
 for i, mpath in enumerate(ensemble_dirs):
     cpath = glob.glob('%s/checkpoints/*.ckpt' % mpath)
     model = CCamCNN.load_from_checkpoint(cpath[0])#,cnn=cnn,output_dim=len(oxides))
+    print(model)
     noise_prec = torch.exp(-model.log_var).detach().cpu().numpy()
     noise_sd = np.squeeze(np.sqrt(1/noise_prec)*oxide_sd*100)
     yhat = model(torch.Tensor(test_spec).to(device)).cpu().detach().numpy()
